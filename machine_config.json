@@ -1,0 +1,214 @@
+{
+  "machine": {
+    "name": "Floradomicilio.com",
+    "model": "VEND-FLWR-2025",
+    "screensaver_timeout": 10,
+    "screensaver_text": "Presiona cualquier lugar para comenzar",
+    "currency": "EUR",
+    "language": "es",
+    "restock_mode": {
+      "enabled": true,
+      "gpio_pin": 16,
+      "activated_at": "2025-07-24T16:15:25.744350",
+      "secret_sequence": {
+        "enabled": true,
+        "sequence": [
+          "A1",
+          "A1",
+          "A1",
+          "A1",
+          "A1",
+          "C1"
+        ],
+        "timeout": 5,
+        "max_attempts": 3
+      }
+    }
+  },
+  "doors": {
+    "A1": {
+      "id": "A1",
+      "gpio_pin": 18,
+      "sensor_pin": 17,
+      "relay_matrix": false,
+      "relay_index": 0,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "A2": {
+      "id": "A2",
+      "gpio_pin": 18,
+      "sensor_pin": 18,
+      "relay_matrix": true,
+      "relay_index": 1,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "B1": {
+      "id": "B1",
+      "gpio_pin": 18,
+      "sensor_pin": 19,
+      "relay_matrix": true,
+      "relay_index": 2,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "B2": {
+      "id": "B2",
+      "gpio_pin": 21,
+      "sensor_pin": 20,
+      "relay_matrix": false,
+      "relay_index": 0,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "C1": {
+      "id": "C1",
+      "gpio_pin": 22,
+      "sensor_pin": 21,
+      "relay_matrix": false,
+      "relay_index": 0,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "C2": {
+      "id": "C2",
+      "gpio_pin": 22,
+      "sensor_pin": 22,
+      "relay_matrix": true,
+      "relay_index": 1,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "D1": {
+      "id": "D1",
+      "gpio_pin": 26,
+      "sensor_pin": 23,
+      "relay_matrix": false,
+      "relay_index": 0,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "D2": {
+      "id": "D2",
+      "gpio_pin": 26,
+      "sensor_pin": 24,
+      "relay_matrix": true,
+      "relay_index": 1,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "E1": {
+      "id": "E1",
+      "gpio_pin": 27,
+      "sensor_pin": 25,
+      "relay_matrix": false,
+      "relay_index": 0,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "E2": {
+      "id": "E2",
+      "gpio_pin": 27,
+      "sensor_pin": 26,
+      "relay_matrix": true,
+      "relay_index": 1,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "F1": {
+      "id": "F1",
+      "gpio_pin": 29,
+      "sensor_pin": 27,
+      "relay_matrix": false,
+      "relay_index": 0,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "F2": {
+      "id": "F2",
+      "gpio_pin": 29,
+      "sensor_pin": 28,
+      "relay_matrix": true,
+      "relay_index": 1,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "G1": {
+      "id": "G1",
+      "gpio_pin": 31,
+      "sensor_pin": 29,
+      "relay_matrix": false,
+      "relay_index": 0,
+      "door_open": false,
+      "last_maintenance": null
+    },
+    "G2": {
+      "id": "G2",
+      "gpio_pin": 31,
+      "sensor_pin": 30,
+      "relay_matrix": true,
+      "relay_index": 1,
+      "door_open": false,
+      "last_maintenance": null
+    }
+  },
+  "payment_methods": {
+    "cash": {
+      "enabled": false,
+      "accepts": [
+        0.05,
+        0.1,
+        0.2,
+        0.5,
+        1.0,
+        2.0,
+        5.0,
+        10.0,
+        20.0
+      ],
+      "max_change": 10.0
+    },
+    "card": {
+      "enabled": false,
+      "providers": [
+        "stripe",
+        "paypal"
+      ],
+      "minimum_amount": 0.5
+    },
+    "contactless": {
+      "enabled": true,
+      "gpio_pin": 24
+    }
+  },
+  "tpv": {
+    "enabled": true,
+    "port": "/dev/ttyUSB0",
+    "baudrate": 9600,
+    "timeout": 10,
+    "retry_attempts": 3
+  },
+  "display": {
+    "machine_svg": {
+      "width": 400,
+      "height": 600,
+      "background_color": "#2c3e50",
+      "glass_color": "#34495e",
+      "frame_color": "#1a252f"
+    },
+    "door_states": {
+      "available": "#28a745",
+      "selected": "#007bff",
+      "out_of_stock": "#dc3545",
+      "blocked": "#6c757d",
+      "dispensing": "#ffc107"
+    }
+  },
+  "security": {
+    "max_failed_attempts": 3,
+    "lockout_duration": 300,
+    "admin_pin": "1234",
+    "maintenance_mode": false
+  }
+}

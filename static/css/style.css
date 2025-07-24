@@ -1,0 +1,852 @@
+/* Estilos para la nueva interfaz de máquina expendedora */
+
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --machine-color: #2c3e50;
+    --glass-color: #ecf0f1;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* === SALVAPANTALLAS === */
+.screensaver-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(45deg, #0f0f23, #1a1a2e, #16213e);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    cursor: pointer;
+}
+
+.screensaver-content {
+    text-align: center;
+    color: white;
+    animation: float 6s ease-in-out infinite;
+}
+
+.screensaver-icon {
+    font-size: 8rem;
+    color: #00d4ff;
+    animation: pulse 2s infinite, rotate 20s linear infinite;
+    display: block;
+    margin-bottom: 2rem;
+}
+
+.screensaver-title {
+    font-size: 3rem;
+    font-weight: 300;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+}
+
+.screensaver-subtitle {
+    font-size: 1.5rem;
+    opacity: 0.8;
+    margin-bottom: 3rem;
+    animation: blink 3s infinite;
+}
+
+.screensaver-pulse {
+    width: 200px;
+    height: 200px;
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    border-radius: 50%;
+    margin: 0 auto;
+    animation: ripple 3s infinite;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 0.8; }
+    25%, 75% { opacity: 1; }
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0.8);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+/* === APLICACIÓN PRINCIPAL === */
+#main-app {
+    background: var(--light-color);
+}
+
+header {
+    background: linear-gradient(135deg, var(--primary-color), #0056b3) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* === INTERFAZ SIMPLE DE PUERTAS === */
+.vending-machine-simple {
+    max-width: 95%;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+/* Responsive para el contenedor principal */
+@media (max-width: 768px) {
+    .vending-machine-simple {
+        max-width: 98%;
+        padding: 5px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .vending-machine-simple {
+        max-width: 1400px;
+    }
+}
+
+.doors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    max-width: 100%;
+    width: 100%;
+}
+
+/* Grid adaptativo para diferentes pantallas */
+@media (min-width: 1400px) {
+    .doors-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 20px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .doors-grid {
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: 12px;
+    }
+}
+
+@media (max-width: 992px) {
+    .doors-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .doors-grid {
+        grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+        gap: 8px;
+        padding: 15px;
+    }
+}
+
+@media (max-width: 576px) {
+    .doors-grid {
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: 6px;
+        padding: 10px;
+    }
+}
+
+/* Grid legacy para compatibilidad - ELIMINADO */
+
+.door-square {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+    border: 3px solid #dee2e6;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    min-height: 80px;
+    max-height: 200px;
+    width: 100%;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+/* Hover para dispositivos con puntero */
+@media (hover: hover) {
+    .door-square:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        border-color: #007bff;
+    }
+    
+    .door-square.available:hover {
+        border-color: #20c997;
+        background: linear-gradient(135deg, #b8e6c3 0%, #a8ddb5 100%);
+    }
+}
+
+/* Efectos táctiles para dispositivos touch */
+@media (hover: none) {
+    .door-square:active {
+        transform: scale(0.95);
+        transition: transform 0.1s ease;
+    }
+    
+    .door-square.available:active {
+        background: linear-gradient(135deg, #b8e6c3 0%, #a8ddb5 100%);
+    }
+}
+
+.door-square.available {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+}
+
+.door-square.out-of-stock {
+    border-color: #dc3545;
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.door-square.blocked {
+    border-color: #ffc107;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+/* Estilos específicos para hover solo en dispositivos con puntero */
+@media (hover: hover) {
+    .door-square.out-of-stock:hover {
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .door-square.blocked:hover {
+        transform: none;
+        box-shadow: none;
+    }
+}
+
+.door-square.selected {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #cce7ff 0%, #b3d9ff 100%);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0,123,255,0.3);
+}
+
+.door-number {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-weight: bold;
+    color: #495057;
+    margin-bottom: 5px;
+    line-height: 1;
+}
+
+.door-square.available .door-number {
+    color: #28a745;
+}
+
+.door-square.out-of-stock .door-number {
+    color: #dc3545;
+}
+
+.door-square.blocked .door-number {
+    color: #ffc107;
+}
+
+.door-square.selected .door-number {
+    color: #007bff;
+}
+
+.door-status {
+    font-size: clamp(0.6rem, 2vw, 0.75rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.door-square.available .door-status {
+    color: #28a745;
+}
+
+.door-square.out-of-stock .door-status {
+    color: #dc3545;
+}
+
+.door-square.blocked .door-status {
+    color: #ffc107;
+}
+
+.door-square.selected .door-status {
+    color: #007bff;
+}
+
+/* Icono de estado en la esquina */
+.door-square::before {
+    content: '';
+    position: absolute;
+    top: clamp(4px, 1vw, 8px);
+    right: clamp(4px, 1vw, 8px);
+    width: clamp(8px, 2vw, 12px);
+    height: clamp(8px, 2vw, 12px);
+    border-radius: 50%;
+    background: #28a745;
+}
+
+.door-square.out-of-stock::before {
+    background: #dc3545;
+}
+
+.door-square.blocked::before {
+    background: #ffc107;
+}
+
+.door-square.selected::before {
+    background: #007bff;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Bandeja de productos simple */
+.product-tray {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    padding: 20px;
+    border-radius: 10px;
+    color: white;
+}
+
+.tray-container {
+    padding: 10px;
+    border: 2px dashed rgba(255,255,255,0.3);
+    border-radius: 8px;
+}
+
+/* Las reglas responsive para puertas están ahora integradas en el grid principal */
+
+/* Ajustes específicos para pantallas ultra pequeñas */
+@media (max-width: 320px) {
+    .doors-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px;
+        padding: 8px;
+    }
+    
+    .door-square {
+        min-height: 60px;
+        border-width: 2px;
+        border-radius: 8px;
+    }
+    
+    .door-number {
+        font-size: 1.2rem;
+        margin-bottom: 2px;
+    }
+    
+    .door-status {
+        font-size: 0.5rem;
+        letter-spacing: 0.2px;
+    }
+}
+
+/* Ajustes para pantallas ultra grandes */
+@media (min-width: 1920px) {
+    .doors-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 25px;
+        padding: 30px;
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+    
+    .door-square {
+        max-height: 250px;
+        border-width: 4px;
+    }
+}
+
+/* Optimización para tablets en orientación landscape */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+    .doors-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+    }
+}
+
+/* Optimización para tablets en orientación portrait */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+    .doors-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 18px;
+    }
+}
+
+/* === MÁQUINA EXPENDEDORA SVG === */
+.vending-machine-container {
+    background: radial-gradient(ellipse at center, #f8f9fa 0%, #e9ecef 100%);
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.vending-machine-svg {
+    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
+    transition: transform 0.3s ease;
+}
+
+.vending-machine-svg:hover {
+    transform: scale(1.02);
+}
+
+/* Puertas de productos */
+.product-door {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.2));
+}
+
+.product-door:hover {
+    transform: scale(1.05);
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
+}
+
+.product-door.selected {
+    animation: doorPulse 1s infinite;
+}
+
+.product-door.out-of-stock {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.product-door.blocked {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.product-door.dispensing {
+    animation: doorDispensing 2s infinite;
+}
+
+@keyframes doorPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+@keyframes doorDispensing {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Texto de las puertas */
+.door-label {
+    font-family: 'Arial', sans-serif;
+    font-weight: bold;
+    font-size: 14px;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+.door-price {
+    font-family: 'Arial', sans-serif;
+    font-size: 12px;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+/* === PANEL DE INFORMACIÓN === */
+.info-panel {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+}
+
+/* === MODALES === */
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    border-bottom: 1px solid #eee;
+    border-radius: 15px 15px 0 0;
+}
+
+.modal-footer {
+    border-top: 1px solid #eee;
+    border-radius: 0 0 15px 15px;
+}
+
+/* Modal de Producto */
+#productModal .modal-dialog {
+    max-width: 600px;
+}
+
+#productModal .modal-body {
+    min-height: 300px;
+}
+
+.product-image-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    position: relative;
+}
+
+.product-image-container img {
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.product-info h3 {
+    color: var(--dark-color);
+    font-weight: 600;
+}
+
+.price-display {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+}
+
+.price-display h2 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.stock-info {
+    text-align: center;
+}
+
+/* Responsive para modal */
+@media (max-width: 768px) {
+    #productModal .modal-dialog {
+        margin: 10px;
+        max-width: calc(100% - 20px);
+    }
+    
+    #productModal .modal-body {
+        padding: 20px 15px;
+    }
+    
+    .product-image-container {
+        min-height: 150px;
+        margin-bottom: 20px;
+    }
+    
+    .price-display h2 {
+        font-size: 2rem;
+    }
+    
+    .product-info h3 {
+        font-size: 1.5rem;
+    }
+}
+
+/* Botones de método de pago */
+.payment-method-btn {
+    transition: all 0.3s ease;
+    border-radius: 10px;
+    min-height: 80px;
+}
+
+.payment-method-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Denominaciones de efectivo */
+.cash-denomination {
+    background: var(--light-color);
+    border: 2px solid var(--secondary-color);
+    border-radius: 10px;
+    padding: 10px;
+    margin: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.cash-denomination:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: scale(1.05);
+}
+
+.cash-denomination.inserted {
+    background: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+}
+
+/* === ESTADO DEL SISTEMA === */
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 8px;
+}
+
+.status-online {
+    background-color: var(--success-color);
+    box-shadow: 0 0 5px var(--success-color);
+}
+
+.status-warning {
+    background-color: var(--warning-color);
+    box-shadow: 0 0 5px var(--warning-color);
+}
+
+.status-error {
+    background-color: var(--danger-color);
+    box-shadow: 0 0 5px var(--danger-color);
+}
+
+/* === ANIMACIONES === */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+.slide-up {
+    animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* === MODAL DE PRODUCTO === */
+#productModal .modal-content {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+#productModal .modal-header {
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    padding: 25px 30px 20px;
+}
+
+#productModal .modal-body {
+    padding: 40px 30px;
+}
+
+#productModal .price-display h1 {
+    font-size: 3.5rem;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#productModal .modal-footer {
+    border-top: none;
+    padding: 20px 30px 30px;
+    border-radius: 0 0 20px 20px;
+}
+
+#productModal .btn-lg {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    border-radius: 12px;
+    min-width: 150px;
+}
+
+/* Animación del modal */
+#productModal.show .modal-dialog {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Responsive modal para móviles */
+@media (max-width: 576px) {
+    #productModal .modal-dialog {
+        margin: 1rem;
+        max-width: calc(100% - 2rem);
+    }
+    
+    #productModal .modal-content {
+        min-height: auto;
+        padding: 1.5rem;
+    }
+    
+    #productModal .modal-header h5 {
+        font-size: 1.2rem;
+    }
+    
+    #productModal #modalPrice {
+        font-size: 2.8rem;
+    }
+    
+    #productModal .btn {
+        font-size: 1rem;
+        padding: 0.6rem 1.5rem;
+        min-width: 120px;
+    }
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+    .screensaver-title {
+        font-size: 2rem;
+    }
+    
+    .screensaver-subtitle {
+        font-size: 1.2rem;
+    }
+    
+    .screensaver-icon {
+        font-size: 5rem;
+    }
+    
+    .vending-machine-container {
+        padding: 1rem;
+    }
+    
+    .vending-machine-svg {
+        width: 100%;
+        height: auto;
+        max-width: 350px;
+    }
+    
+    .info-panel {
+        position: static;
+        margin-top: 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .payment-method-btn {
+        min-height: 60px;
+        font-size: 0.9rem;
+    }
+    
+    .cash-denomination {
+        font-size: 0.8rem;
+        padding: 5px;
+    }
+}
+
+/* === UTILIDADES === */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #0056b3;
+}

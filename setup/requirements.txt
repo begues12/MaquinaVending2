@@ -1,0 +1,16 @@
+Flask==3.0.0
+Flask-CORS==4.0.0
+pywebview==5.4
+requests==2.31.0
+python-dotenv==1.0.1
+stripe==8.2.0
+paypalrestsdk==1.13.1
+pyserial==3.5
+
+# GPIO libraries (install only on Raspberry Pi)
+# RPi.GPIO==0.7.1
+# gpiozero==1.6.2
+
+# Development dependencies
+pytest==7.4.4
+black==24.1.1

@@ -1,0 +1,658 @@
+"""
+Controlador de Hardware para Relés y Sensores de Puertas
+Gestiona la apertura de puertas mediante relés y detecta el cierre con sensores
+"""
+import time
+import threading
+import logging
+from typing import Dict, Optional, Callable
+import json
+import os
+
+# Intentar importar RPi.GPIO, si no está disponible (desarrollo), usar mock
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+except ImportError:
+    GPIO_AVAILABLE = False
+    print("RPi.GPIO no disponible - usando modo simulación")
+    
+    # Mock para desarrollo sin Raspberry Pi
+    class MockGPIO:
+        BCM = "BCM"
+        OUT = "OUT"
+        IN = "IN"
+        PUD_UP = "PUD_UP"
+        PUD_DOWN = "PUD_DOWN"
+        HIGH = 1
+        LOW = 0
+        RISING = "RISING"
+        FALLING = "FALLING"
+        BOTH = "BOTH"
+        
+        _pin_states = {}  # Simular estados de pines
+        
+        @staticmethod
+        def setmode(mode): 
+            print(f"SIMULACIÓN GPIO: Modo configurado a {mode}")
+        
+        @staticmethod
+        def setwarnings(warnings): 
+            print(f"SIMULACIÓN GPIO: Warnings = {warnings}")
+        
+        @staticmethod
+        def setup(pin, mode, pull_up_down=None): 
+            MockGPIO._pin_states[pin] = MockGPIO.LOW
+            print(f"SIMULACIÓN GPIO: Pin {pin} configurado como {mode}")
+        
+        @staticmethod
+        def output(pin, state): 
+            MockGPIO._pin_states[pin] = state
+            estado_texto = "HIGH" if state == MockGPIO.HIGH else "LOW"
+            print(f"SIMULACIÓN GPIO: Pin {pin} -> {estado_texto} ({'Relé ACTIVADO' if state == MockGPIO.HIGH else 'Relé DESACTIVADO'})")
+        
+        @staticmethod
+        def input(pin): 
+            return MockGPIO._pin_states.get(pin, MockGPIO.LOW)
+        
+        @staticmethod
+        def add_event_detect(pin, edge, callback=None, bouncetime=None): 
+            print(f"SIMULACIÓN GPIO: Event detect configurado en pin {pin}")
+        
+        @staticmethod
+        def remove_event_detect(pin): 
+            print(f"SIMULACIÓN GPIO: Event detect removido del pin {pin}")
+        
+        @staticmethod
+        def cleanup(): 
+            MockGPIO._pin_states.clear()
+            print("SIMULACIÓN GPIO: Cleanup completado")
+    
+    GPIO = MockGPIO()
+
+class HardwareController:
+    """Controlador principal para el hardware de la máquina expendedora"""
+    
+    def __init__(self, config_path: str = "machine_config.json"):
+        self.config_path = config_path
+        self.config = self._load_config()
+        self.logger = logging.getLogger(__name__)
+        
+        # Estados de las puertas
+        self.door_states = {}
+        self.door_timers = {}
+        self.door_callbacks = {}
+        
+        # Configuración de relés
+        self.relay_duration = 3.0  # Segundos que el relé permanece activo
+        self.sensor_debounce = 200  # Milisegundos de rebote para sensores
+        
+        # Estado de inicialización
+        self.initialized = False
+        
+        self._initialize_gpio()
+        
+    def _load_config(self) -> dict:
+        """Cargar configuración desde archivo JSON"""
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            self.logger.error(f"Error cargando configuración: {e}")
+            return {}
+    
+    def _save_config(self):
+        """Guardar configuración actual al archivo"""
+        try:
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            self.logger.error(f"Error guardando configuración: {e}")
+    
+    def _initialize_gpio(self):
+        """Inicializar configuración de GPIO"""
+        try:
+            # Configurar pines de las puertas
+            doors_config = self.config.get('doors', {})
+            
+            # Inicializar estados de puertas independientemente del modo
+            for door_id, door_info in doors_config.items():
+                self.door_states[door_id] = {
+                    'is_open': False,
+                    'relay_active': False,
+                    'last_opened': None,
+                    'last_closed': None
+                }
+            
+            if not GPIO_AVAILABLE:
+                self.logger.warning("GPIO no disponible - modo simulación activado")
+                self.initialized = True
+                return
+                
+            # Configurar modo GPIO solo si está disponible
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setwarnings(False)
+            
+            for door_id, door_info in doors_config.items():
+                gpio_pin = door_info.get('gpio_pin')
+                sensor_pin = door_info.get('sensor_pin')
+                
+                if gpio_pin:
+                    # Configurar pin de relé como salida (normalmente cerrado)
+                    GPIO.setup(gpio_pin, GPIO.OUT)
+                    GPIO.output(gpio_pin, GPIO.LOW)
+                    
+                if sensor_pin:
+                    # Configurar pin de sensor como entrada con pull-up
+                    GPIO.setup(sensor_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                    
+                    # Configurar detección de eventos
+                    GPIO.add_event_detect(
+                        sensor_pin, 
+                        GPIO.BOTH, 
+                        callback=lambda channel, door=door_id: self._sensor_callback(door, channel),
+                        bouncetime=self.sensor_debounce
+                    )
+            
+            self.initialized = True
+            self.logger.info("GPIO inicializado correctamente")
+            
+        except Exception as e:
+            self.logger.error(f"Error inicializando GPIO: {e}")
+            self.initialized = False
+    
+    def _sensor_callback(self, door_id: str, channel: int):
+        """Callback para eventos de sensores de puerta"""
+        try:
+            doors_config = self.config.get('doors', {})
+            door_info = doors_config.get(door_id, {})
+            sensor_pin = door_info.get('sensor_pin')
+            
+            if not sensor_pin:
+                return
+                
+            # Leer estado del sensor (LOW = puerta cerrada, HIGH = puerta abierta)
+            sensor_state = GPIO.input(sensor_pin) if GPIO_AVAILABLE else 0
+            is_open = sensor_state == GPIO.HIGH if GPIO_AVAILABLE else False
+            
+            previous_state = self.door_states.get(door_id, {}).get('is_open', False)
+            
+            # Solo procesar si hay cambio de estado
+            if is_open != previous_state:
+                current_time = time.time()
+                
+                self.door_states[door_id]['is_open'] = is_open
+                
+                if is_open:
+                    self.door_states[door_id]['last_opened'] = current_time
+                    self.logger.info(f"Puerta {door_id} abierta")
+                else:
+                    self.door_states[door_id]['last_closed'] = current_time
+                    self.logger.info(f"Puerta {door_id} cerrada")
+                
+                # Actualizar configuración
+                self.config['doors'][door_id]['door_open'] = is_open
+                self._save_config()
+                
+                # Ejecutar callback si existe
+                if door_id in self.door_callbacks:
+                    callback = self.door_callbacks[door_id]
+                    threading.Thread(
+                        target=callback, 
+                        args=(door_id, is_open),
+                        daemon=True
+                    ).start()
+                    
+        except Exception as e:
+            self.logger.error(f"Error en callback de sensor {door_id}: {e}")
+    
+    def open_door(self, door_id: str) -> bool:
+        """
+        Activar relé para abrir una puerta específica
+        Soporta matrices de relés con índices
+        
+        Args:
+            door_id: ID de la puerta a abrir (ej: 'A1', 'B2')
+            
+        Returns:
+            bool: True si la operación fue exitosa
+        """
+        try:
+            if not self.initialized:
+                self.logger.error("Hardware no inicializado")
+                return False
+                
+            doors_config = self.config.get('doors', {})
+            door_info = doors_config.get(door_id)
+            
+            if not door_info:
+                self.logger.error(f"Puerta {door_id} no encontrada en configuración")
+                return False
+                
+            gpio_pin = door_info.get('gpio_pin')
+            relay_index = door_info.get('relay_index', 0)  # Índice dentro de la matriz
+            relay_matrix = door_info.get('relay_matrix', False)  # Si es matriz de relés
+            
+            if not gpio_pin:
+                self.logger.error(f"Pin GPIO no configurado para puerta {door_id}")
+                return False
+            
+            # Inicializar estado de puerta si no existe
+            if door_id not in self.door_states:
+                self.door_states[door_id] = {
+                    'is_open': False,
+                    'relay_active': False,
+                    'last_opened': None,
+                    'last_closed': None
+                }
+            
+            # Verificar si la puerta ya está en proceso de apertura
+            if self.door_states.get(door_id, {}).get('relay_active', False):
+                self.logger.warning(f"Puerta {door_id} ya está en proceso de apertura")
+                return False
+            
+            # Activar relé (simple o matriz)
+            if relay_matrix:
+                self.logger.info(f"Activando relé matriz para puerta {door_id} (pin {gpio_pin}, índice {relay_index})")
+                success = self._activate_relay_matrix(gpio_pin, relay_index, door_id)
+            else:
+                self.logger.info(f"Activando relé simple para puerta {door_id} (pin {gpio_pin})")
+                success = self._activate_relay_simple(gpio_pin, door_id)
+            
+            if not success:
+                return False
+            
+            # Marcar relé como activo
+            self.door_states[door_id]['relay_active'] = True
+            self.door_states[door_id]['last_opened'] = time.time()
+            
+            # Programar desactivación del relé
+            timer = threading.Timer(self.relay_duration, self._deactivate_relay, args=[door_id, gpio_pin, relay_index, relay_matrix])
+            timer.start()
+            self.door_timers[door_id] = timer
+            
+            self.logger.info(f"Relé de puerta {door_id} activado exitosamente")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error abriendo puerta {door_id}: {str(e)}")
+            return False
+    
+    def _activate_relay_simple(self, gpio_pin: int, door_id: str) -> bool:
+        """Activar un relé simple (un pin, un relé)"""
+        try:
+            if GPIO_AVAILABLE:
+                GPIO.output(gpio_pin, GPIO.HIGH)
+            else:
+                print(f"SIMULACIÓN: Activando relé simple puerta {door_id} en pin {gpio_pin}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error activando relé simple {door_id}: {str(e)}")
+            return False
+    
+    def _activate_relay_matrix(self, gpio_pin: int, relay_index: int, door_id: str) -> bool:
+        """
+        Activar un relé específico en una matriz de relés
+        Implementa protocolo de selección por índice
+        """
+        try:
+            if GPIO_AVAILABLE:
+                # Protocolo para matriz de relés:
+                # 1. Enviar pulso de selección (índice en binario)
+                # 2. Activar pin principal
+                # 3. Enviar pulso de confirmación
+                
+                # Convertir índice a binario (ejemplo: índice 3 = 011)
+                binary_index = format(relay_index, '08b')  # 8 bits
+                
+                # Enviar bits de selección
+                for bit in binary_index:
+                    GPIO.output(gpio_pin, GPIO.HIGH if bit == '1' else GPIO.LOW)
+                    time.sleep(0.001)  # 1ms por bit
+                
+                # Pulso final de activación
+                GPIO.output(gpio_pin, GPIO.HIGH)
+                time.sleep(0.005)  # 5ms de pulso de activación
+                GPIO.output(gpio_pin, GPIO.LOW)
+                time.sleep(0.001)  # Pausa
+                GPIO.output(gpio_pin, GPIO.HIGH)  # Mantener activo
+                
+            else:
+                print(f"SIMULACIÓN: Activando relé matriz puerta {door_id} en pin {gpio_pin}, índice {relay_index}")
+                print(f"SIMULACIÓN: Protocolo matriz - Enviando selección binaria: {format(relay_index, '08b')}")
+                print(f"SIMULACIÓN: Protocolo matriz - Relé {relay_index} ACTIVADO")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error activando relé matriz {door_id}: {str(e)}")
+            return False
+
+    def _deactivate_relay(self, door_id: str, gpio_pin: int, relay_index: int = 0, is_matrix: bool = False):
+        """Desactivar relé después del tiempo especificado"""
+        try:
+            if is_matrix:
+                self.logger.info(f"Desactivando relé matriz para puerta {door_id} (pin {gpio_pin}, índice {relay_index})")
+                self._deactivate_relay_matrix(gpio_pin, relay_index, door_id)
+            else:
+                self.logger.info(f"Desactivando relé simple para puerta {door_id} (pin {gpio_pin})")
+                self._deactivate_relay_simple(gpio_pin, door_id)
+            
+            # Marcar relé como inactivo
+            if door_id in self.door_states:
+                self.door_states[door_id]['relay_active'] = False
+                self.door_states[door_id]['last_closed'] = time.time()
+                
+            # Limpiar timer
+            if door_id in self.door_timers:
+                del self.door_timers[door_id]
+                
+            self.logger.info(f"Relé de puerta {door_id} desactivado exitosamente")
+            
+        except Exception as e:
+            self.logger.error(f"Error desactivando relé {door_id}: {str(e)}")
+            # Asegurar que el estado se marque como inactivo incluso si hay error
+            if door_id in self.door_states:
+                self.door_states[door_id]['relay_active'] = False
+
+    def _deactivate_relay_simple(self, gpio_pin: int, door_id: str):
+        """Desactivar un relé simple"""
+        try:
+            if GPIO_AVAILABLE:
+                GPIO.output(gpio_pin, GPIO.LOW)
+            else:
+                print(f"SIMULACIÓN: Desactivando relé simple puerta {door_id} en pin {gpio_pin}")
+        except Exception as e:
+            self.logger.error(f"Error desactivando relé simple {door_id}: {str(e)}")
+
+    def _deactivate_relay_matrix(self, gpio_pin: int, relay_index: int, door_id: str):
+        """Desactivar un relé específico en matriz"""
+        try:
+            if GPIO_AVAILABLE:
+                # Protocolo de desactivación para matriz
+                # Enviar comando de desactivación específico
+                binary_index = format(relay_index, '08b')
+                
+                # Enviar bits de selección
+                for bit in binary_index:
+                    GPIO.output(gpio_pin, GPIO.HIGH if bit == '1' else GPIO.LOW)
+                    time.sleep(0.001)
+                
+                # Pulso de desactivación
+                GPIO.output(gpio_pin, GPIO.LOW)
+                time.sleep(0.005)
+                GPIO.output(gpio_pin, GPIO.HIGH)
+                time.sleep(0.001)
+                GPIO.output(gpio_pin, GPIO.LOW)  # Estado final desactivado
+                
+            else:
+                print(f"SIMULACIÓN: Desactivando relé matriz puerta {door_id} en pin {gpio_pin}, índice {relay_index}")
+                print(f"SIMULACIÓN: Protocolo matriz - Relé {relay_index} DESACTIVADO")
+                
+        except Exception as e:
+            self.logger.error(f"Error desactivando relé matriz {door_id}: {str(e)}")
+    
+    def get_door_state(self, door_id: str) -> Dict:
+        """
+        Obtener estado actual de una puerta
+        
+        Args:
+            door_id: ID de la puerta
+            
+        Returns:
+            Dict con información del estado de la puerta
+        """
+        door_state = self.door_states.get(door_id, {})
+        config_state = self.config.get('doors', {}).get(door_id, {})
+        
+        return {
+            'door_id': door_id,
+            'is_open': door_state.get('is_open', False),
+            'relay_active': door_state.get('relay_active', False),
+            'last_opened': door_state.get('last_opened'),
+            'last_closed': door_state.get('last_closed'),
+            'gpio_pin': config_state.get('gpio_pin'),
+            'sensor_pin': config_state.get('sensor_pin'),
+            'relay_matrix': config_state.get('relay_matrix', False),
+            'relay_index': config_state.get('relay_index', 0),
+            'last_maintenance': config_state.get('last_maintenance')
+        }
+
+    def get_relay_matrix_info(self, gpio_pin: int) -> Dict:
+        """
+        Obtener información sobre qué puertas comparten una matriz de relés
+        
+        Args:
+            gpio_pin: Pin GPIO de la matriz
+            
+        Returns:
+            Dict con información de la matriz
+        """
+        doors_config = self.config.get('doors', {})
+        matrix_doors = []
+        
+        for door_id, door_info in doors_config.items():
+            if door_info.get('gpio_pin') == gpio_pin:
+                matrix_doors.append({
+                    'door_id': door_id,
+                    'relay_index': door_info.get('relay_index', 0),
+                    'is_matrix': door_info.get('relay_matrix', False)
+                })
+        
+        # Ordenar por índice de relé
+        matrix_doors.sort(key=lambda x: x['relay_index'])
+        
+        return {
+            'gpio_pin': gpio_pin,
+            'doors': matrix_doors,
+            'total_relays': len([d for d in matrix_doors if d['is_matrix']]) + 1,
+            'simple_relays': len([d for d in matrix_doors if not d['is_matrix']]),
+            'matrix_relays': len([d for d in matrix_doors if d['is_matrix']])
+        }
+    
+    def get_all_doors_state(self) -> Dict[str, Dict]:
+        """Obtener estado de todas las puertas"""
+        states = {}
+        doors_config = self.config.get('doors', {})
+        
+        for door_id in doors_config.keys():
+            states[door_id] = self.get_door_state(door_id)
+            
+        return states
+    
+    def register_door_callback(self, door_id: str, callback: Callable[[str, bool], None]):
+        """
+        Registrar callback para eventos de puerta
+        
+        Args:
+            door_id: ID de la puerta
+            callback: Función a llamar cuando cambie el estado (door_id, is_open)
+        """
+        self.door_callbacks[door_id] = callback
+        self.logger.info(f"Callback registrado para puerta {door_id}")
+    
+    def unregister_door_callback(self, door_id: str):
+        """Desregistrar callback para una puerta"""
+        if door_id in self.door_callbacks:
+            del self.door_callbacks[door_id]
+            self.logger.info(f"Callback desregistrado para puerta {door_id}")
+    
+    def test_door(self, door_id: str) -> bool:
+        """
+        Probar funcionamiento de una puerta (relé y sensor)
+        
+        Args:
+            door_id: ID de la puerta a probar
+            
+        Returns:
+            bool: True si la prueba fue exitosa
+        """
+        try:
+            self.logger.info(f"Iniciando prueba de puerta {door_id}")
+            
+            # Verificar configuración
+            door_info = self.config.get('doors', {}).get(door_id)
+            if not door_info:
+                self.logger.error(f"Puerta {door_id} no encontrada")
+                return False
+            
+            # Probar apertura
+            if not self.open_door(door_id):
+                self.logger.error(f"Error en prueba de apertura de puerta {door_id}")
+                return False
+            
+            # Verificar estado del sensor
+            sensor_pin = door_info.get('sensor_pin')
+            if sensor_pin and GPIO_AVAILABLE:
+                sensor_state = GPIO.input(sensor_pin)
+                self.logger.info(f"Estado del sensor de puerta {door_id}: {sensor_state}")
+            
+            self.logger.info(f"Prueba de puerta {door_id} completada exitosamente")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error en prueba de puerta {door_id}: {e}")
+            return False
+    
+    def test_relay_matrix(self, gpio_pin: int) -> Dict[str, bool]:
+        """
+        Probar todas las puertas que comparten una matriz de relés
+        
+        Args:
+            gpio_pin: Pin GPIO de la matriz a probar
+            
+        Returns:
+            Dict con resultados de cada puerta
+        """
+        results = {}
+        matrix_info = self.get_relay_matrix_info(gpio_pin)
+        
+        self.logger.info(f"Probando matriz de relés en pin {gpio_pin}")
+        self.logger.info(f"Puertas en matriz: {[d['door_id'] for d in matrix_info['doors']]}")
+        
+        for door_info in matrix_info['doors']:
+            door_id = door_info['door_id']
+            try:
+                self.logger.info(f"Probando puerta {door_id} (índice {door_info['relay_index']}, matriz: {door_info['is_matrix']})")
+                results[door_id] = self.test_door(door_id)
+                time.sleep(1)  # Pausa entre pruebas
+            except Exception as e:
+                self.logger.error(f"Error probando puerta {door_id}: {str(e)}")
+                results[door_id] = False
+        
+        return results
+
+    def validate_matrix_configuration(self) -> Dict[str, list]:
+        """
+        Validar la configuración de matrices de relés
+        
+        Returns:
+            Dict con información de validación
+        """
+        doors_config = self.config.get('doors', {})
+        validation_results = {
+            'valid_matrices': [],
+            'conflicts': [],
+            'warnings': [],
+            'gpio_pins': {}
+        }
+        
+        # Agrupar por pin GPIO
+        for door_id, door_info in doors_config.items():
+            gpio_pin = door_info.get('gpio_pin')
+            if gpio_pin not in validation_results['gpio_pins']:
+                validation_results['gpio_pins'][gpio_pin] = []
+            
+            validation_results['gpio_pins'][gpio_pin].append({
+                'door_id': door_id,
+                'relay_index': door_info.get('relay_index', 0),
+                'is_matrix': door_info.get('relay_matrix', False)
+            })
+        
+        # Validar cada pin
+        for gpio_pin, doors in validation_results['gpio_pins'].items():
+            # Verificar índices duplicados
+            indices = [d['relay_index'] for d in doors if d['is_matrix']]
+            if len(indices) != len(set(indices)):
+                validation_results['conflicts'].append(f"Pin {gpio_pin}: Índices duplicados en matriz")
+            
+            # Verificar mezcla de simple y matriz con mismo índice
+            simple_doors = [d for d in doors if not d['is_matrix']]
+            matrix_doors = [d for d in doors if d['is_matrix']]
+            
+            if len(simple_doors) > 1:
+                validation_results['conflicts'].append(f"Pin {gpio_pin}: Múltiples relés simples")
+            
+            if simple_doors and matrix_doors:
+                for simple in simple_doors:
+                    if simple['relay_index'] in [m['relay_index'] for m in matrix_doors]:
+                        validation_results['conflicts'].append(f"Pin {gpio_pin}: Conflicto entre relé simple y matriz en índice {simple['relay_index']}")
+        
+        return validation_results
+
+    def test_all_doors(self) -> Dict[str, bool]:
+        """Probar todas las puertas configuradas"""
+        results = {}
+        doors_config = self.config.get('doors', {})
+        
+        for door_id in doors_config.keys():
+            results[door_id] = self.test_door(door_id)
+            time.sleep(1)  # Pausa entre pruebas
+            
+        return results
+    
+    def emergency_stop(self):
+        """Detener todos los relés inmediatamente"""
+        try:
+            self.logger.warning("Ejecutando parada de emergencia")
+            
+            doors_config = self.config.get('doors', {})
+            
+            for door_id, door_info in doors_config.items():
+                gpio_pin = door_info.get('gpio_pin')
+                if gpio_pin:
+                    if GPIO_AVAILABLE:
+                        GPIO.output(gpio_pin, GPIO.LOW)
+                    
+                    # Cancelar timers activos
+                    if door_id in self.door_timers:
+                        self.door_timers[door_id].cancel()
+                        del self.door_timers[door_id]
+                    
+                    # Actualizar estado
+                    if door_id in self.door_states:
+                        self.door_states[door_id]['relay_active'] = False
+            
+            self.logger.info("Parada de emergencia completada")
+            
+        except Exception as e:
+            self.logger.error(f"Error en parada de emergencia: {e}")
+    
+    def cleanup(self):
+        """Limpiar recursos GPIO"""
+        try:
+            # Cancelar todos los timers
+            for timer in self.door_timers.values():
+                timer.cancel()
+            self.door_timers.clear()
+            
+            # Limpiar GPIO
+            if GPIO_AVAILABLE:
+                GPIO.cleanup()
+                
+            self.logger.info("Limpieza de GPIO completada")
+            
+        except Exception as e:
+            self.logger.error(f"Error en limpieza: {e}")
+    
+    def __del__(self):
+        """Destructor - limpiar recursos"""
+        self.cleanup()
+
+# Instancia global del controlador
+hardware_controller = HardwareController()
+
+# Función para usar en el resto de la aplicación
+def get_hardware_controller() -> HardwareController:
+    """Obtener instancia del controlador de hardware"""
+    return hardware_controller

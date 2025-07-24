@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Responsive - Puertas Máquina Expendedora</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+    <style>
+        body {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .test-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .resolution-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .door-count-selector {
+            margin-bottom: 20px;
+        }
+        
+        .door-count-selector button {
+            margin: 5px;
+            padding: 10px 15px;
+            border: 2px solid #007bff;
+            background: white;
+            color: #007bff;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .door-count-selector button.active {
+            background: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="resolution-info" id="resolutionInfo">
+        Resolución: <span id="resolution"></span><br>
+        Orientación: <span id="orientation"></span>
+    </div>
+
+    <div class="test-container">
+        <h1>🧪 Prueba de Responsividad - Puertas de Máquina Expendedora</h1>
+        <p>Esta página permite probar cómo se comportan las puertas en diferentes tamaños de pantalla.</p>
+        
+        <div class="door-count-selector">
+            <strong>Número de puertas a mostrar:</strong><br>
+            <button onclick="generateDoors(4)" class="active">4 Puertas</button>
+            <button onclick="generateDoors(6)">6 Puertas</button>
+            <button onclick="generateDoors(9)">9 Puertas</button>
+            <button onclick="generateDoors(12)">12 Puertas</button>
+            <button onclick="generateDoors(14)">14 Puertas (Completo)</button>
+            <button onclick="generateDoors(20)">20 Puertas (Máximo)</button>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <div class="vending-machine-simple">
+            <div class="doors-grid" id="doorsGrid">
+                <!-- Las puertas se generarán aquí -->
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h3>📱 Información de Responsive</h3>
+        <div id="responsiveInfo">
+            <p><strong>Breakpoints CSS:</strong></p>
+            <ul>
+                <li>📱 Móvil pequeño: ≤ 320px (2 columnas, gap mínimo)</li>
+                <li>📱 Móvil: ≤ 576px (auto-fit min 80px)</li>
+                <li>📱 Móvil grande: ≤ 768px (auto-fit min 90px)</li>
+                <li>📱 Tablet: ≤ 992px (auto-fit min 100px)</li>
+                <li>💻 Desktop: ≤ 1200px (auto-fit min 110px)</li>
+                <li>🖥️ Desktop grande: ≤ 1400px (auto-fit min 120px)</li>
+                <li>🖥️ Ultra wide: ≥ 1920px (auto-fit min 180px, máx 1600px)</li>
+            </ul>
+            
+            <p><strong>Características responsive:</strong></p>
+            <ul>
+                <li>✅ Grid auto-fit que se adapta al espacio disponible</li>
+                <li>✅ Tamaños de fuente escalables con clamp()</li>
+                <li>✅ Gaps adaptativos según tamaño de pantalla</li>
+                <li>✅ Iconos de estado escalables</li>
+                <li>✅ Efectos hover solo en dispositivos con puntero</li>
+                <li>✅ Efectos táctiles para dispositivos touch</li>
+                <li>✅ Optimizaciones específicas para orientación landscape/portrait</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Generar puertas de prueba
+        function generateDoors(count) {
+            const grid = document.getElementById('doorsGrid');
+            grid.innerHTML = '';
+            
+            // Actualizar botón activo
+            document.querySelectorAll('.door-count-selector button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            const doorIds = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'E1', 'E2', 'F1', 'F2', 'G1', 'G2'];
+            const states = ['available', 'out-of-stock', 'blocked', 'selected'];
+            const stateTexts = {
+                'available': 'Disponible',
+                'out-of-stock': 'Agotado',
+                'blocked': 'Bloqueado',
+                'selected': 'Seleccionado'
+            };
+            
+            for (let i = 0; i < count; i++) {
+                const doorId = doorIds[i % doorIds.length] || `T${i + 1}`;
+                const state = states[i % states.length];
+                
+                const doorElement = document.createElement('div');
+                doorElement.className = `door-square ${state}`;
+                doorElement.innerHTML = `
+                    <div class="door-number">${doorId}</div>
+                    <div class="door-status">${stateTexts[state]}</div>
+                `;
+                
+                // Agregar evento de clic
+                doorElement.addEventListener('click', function() {
+                    alert(`Puerta ${doorId} clickeada (${stateTexts[state]})`);
+                });
+                
+                grid.appendChild(doorElement);
+            }
+        }
+        
+        // Actualizar información de resolución
+        function updateResolutionInfo() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const orientation = width > height ? 'Landscape' : 'Portrait';
+            
+            document.getElementById('resolution').textContent = `${width} x ${height}`;
+            document.getElementById('orientation').textContent = orientation;
+            
+            // Determinar breakpoint
+            let breakpoint = '';
+            if (width <= 320) breakpoint = '📱 Móvil Pequeño';
+            else if (width <= 576) breakpoint = '📱 Móvil';
+            else if (width <= 768) breakpoint = '📱 Móvil Grande';
+            else if (width <= 992) breakpoint = '📱 Tablet';
+            else if (width <= 1200) breakpoint = '💻 Desktop';
+            else if (width <= 1400) breakpoint = '💻 Desktop Grande';
+            else if (width >= 1920) breakpoint = '🖥️ Ultra Wide';
+            else breakpoint = '🖥️ Desktop XL';
+            
+            // Agregar breakpoint info si no existe
+            if (!document.getElementById('currentBreakpoint')) {
+                const bpElement = document.createElement('div');
+                bpElement.id = 'currentBreakpoint';
+                document.getElementById('resolutionInfo').appendChild(bpElement);
+            }
+            document.getElementById('currentBreakpoint').innerHTML = `Breakpoint: ${breakpoint}`;
+        }
+        
+        // Inicializar
+        window.addEventListener('resize', updateResolutionInfo);
+        window.addEventListener('orientationchange', updateResolutionInfo);
+        
+        // Cargar inicial
+        generateDoors(4);
+        updateResolutionInfo();
+        
+        // Simular diferentes resoluciones con botones
+        function addSimulationButtons() {
+            const container = document.querySelector('.door-count-selector');
+            const simulationDiv = document.createElement('div');
+            simulationDiv.style.marginTop = '20px';
+            simulationDiv.innerHTML = `
+                <strong>Simulación de resoluciones:</strong><br>
+                <button onclick="simulateResolution(320, 568)">iPhone SE</button>
+                <button onclick="simulateResolution(375, 667)">iPhone 8</button>
+                <button onclick="simulateResolution(390, 844)">iPhone 12</button>
+                <button onclick="simulateResolution(768, 1024)">iPad</button>
+                <button onclick="simulateResolution(1024, 768)">iPad Landscape</button>
+                <button onclick="simulateResolution(1920, 1080)">Desktop FHD</button>
+                <button onclick="resetSimulation()">Resetear</button>
+            `;
+            container.appendChild(simulationDiv);
+        }
+        
+        function simulateResolution(width, height) {
+            document.body.style.width = width + 'px';
+            document.body.style.height = height + 'px';
+            document.body.style.overflow = 'auto';
+            
+            // Simular cambio de viewport
+            const metaViewport = document.querySelector('meta[name=viewport]');
+            metaViewport.setAttribute('content', `width=${width}, initial-scale=1.0`);
+            
+            updateResolutionInfo();
+        }
+        
+        function resetSimulation() {
+            document.body.style.width = '';
+            document.body.style.height = '';
+            document.body.style.overflow = '';
+            
+            const metaViewport = document.querySelector('meta[name=viewport]');
+            metaViewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+            
+            updateResolutionInfo();
+        }
+        
+        // Agregar botones de simulación
+        addSimulationButtons();
+    </script>
+</body>
+</html>
