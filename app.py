@@ -34,9 +34,9 @@ CORS(app)
 @app.route('/')
 def index():
     """Página principal de la máquina expendedora"""
-    machine_config = config_manager.config
-    doors = config_manager.get_all_doors_with_products()
-    restock_status = restock_controller.get_restock_status()
+    machine_config  = config_manager.config
+    doors           = config_manager.get_all_doors_with_products()
+    restock_status  = restock_controller.get_restock_status()
     
     return render_template('index.html', 
                          config=machine_config,
@@ -46,15 +46,12 @@ def index():
 @app.route('/restock')
 def restock_panel():
     """Panel de administración para reposición"""
-    machine_config = config_manager.config
-    return render_template('restock.html', 
-                         config=machine_config)
+    return render_template('restock.html', config=config_manager.config)
 
 @app.route('/api/doors')
 def get_doors():
     """API para obtener todas las puertas con productos"""
-    doors = config_manager.get_all_doors_with_products()
-    return jsonify({'success': True, 'doors': doors})
+    return jsonify({'success': True, 'doors': config_manager.get_all_doors_with_products()})
 
 @app.route('/api/door/<door_id>')
 def get_door(door_id):
@@ -74,9 +71,9 @@ def process_purchase():
     if not data or 'door_id' not in data:
         return jsonify({'error': 'ID de puerta requerido'}), 400
     
-    door_id = data['door_id']
-    payment_method = data.get('payment_method', 'contactless')
-    
+    door_id         = data['door_id']
+    payment_method  = data.get('payment_method', 'contactless')
+
     try:
         # Verificar que la puerta existe y obtener producto
         door_config = config_manager.get_door(door_id)
@@ -112,11 +109,11 @@ def process_purchase():
         
         # Crear registro de venta
         sale_id = db_manager.create_sale(
-            door_id=door_id,
-            product_id=product['id'],
-            payment_method=payment_method,
-            amount=amount,
-            payment_id=payment_result.get('payment_id')
+            door_id         = door_id,
+            product_id      = product['id'],
+            payment_method  = payment_method,
+            amount          = amount,
+            payment_id      = payment_result.get('payment_id')
         )
         
         if not sale_id:
@@ -139,11 +136,11 @@ def process_purchase():
             )
             
             return jsonify({
-                'success': True,
-                'message': 'Compra realizada con éxito',
-                'sale_id': sale_id,
-                'product': product['name'],
-                'amount': amount,
+                'success'       : True,
+                'message'       : 'Compra realizada con éxito',
+                'sale_id'       : sale_id,
+                'product'       : product['name'],
+                'amount'        : amount,
                 'payment_method': payment_method
             })
         else:
@@ -151,9 +148,9 @@ def process_purchase():
             db_manager.update_sale_status(sale_id, 'failed')
             
             return jsonify({
-                'success': False,
-                'error': 'Error al dispensar producto. Contacte con soporte.',
-                'sale_id': sale_id
+                'success'   : False,
+                'error'     : 'Error al dispensar producto. Contacte con soporte.',
+                'sale_id'   : sale_id
             }), 500
             
     except Exception as e:
@@ -161,10 +158,30 @@ def process_purchase():
         return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
 
 # Rutas para modo reposición
+@app.route('/api/restock/click', methods=['POST'])
+def process_screen_click():
+    """Procesar clic en pantalla para activación de modo restock"""
+    try:
+        result = restock_controller.process_screen_click()
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        logger.error(f"Error al procesar clic de activación: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/restock/click/status', methods=['GET'])
+def get_click_activation_status():
+    """Obtener estado del sistema de activación por clics"""
+    try:
+        status = restock_controller.get_click_activation_status()
+        return jsonify({'success': True, 'status': status})
+    except Exception as e:
+        logger.error(f"Error al obtener estado de activación por clics: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/restock/sequence', methods=['POST'])
 def check_secret_sequence():
     """Verificar secuencia secreta para acceso a modo reposición"""
-    data = request.get_json()
+    data    = request.get_json()
     door_id = data.get('door_id')
     
     if not door_id:
@@ -219,10 +236,10 @@ def restock_door_endpoint(door_id):
     if not restock_controller.is_restock_mode_active():
         return jsonify({'success': False, 'error': 'Modo reposición no activo'}), 403
     
-    data = request.get_json()
-    quantity = data.get('quantity', 1) if data else 1
-    operator = data.get('operator', 'admin') if data else 'admin'
-    notes = data.get('notes', '') if data else ''
+    data        = request.get_json()
+    quantity    = data.get('quantity', 1) if data else 1
+    operator    = data.get('operator', 'admin') if data else 'admin'
+    notes       = data.get('notes', '') if data else ''
     
     try:
         success = restock_controller.restock_door(door_id, quantity, operator, notes)
@@ -230,9 +247,9 @@ def restock_door_endpoint(door_id):
             # Obtener información actualizada
             product = db_manager.get_product_by_door(door_id)
             return jsonify({
-                'success': True,
-                'message': f'Puerta {door_id} reabastecida con {quantity} unidades',
-                'new_stock': product['stock'] if product else 0
+                'success'   : True,
+                'message'   : f'Puerta {door_id} reabastecida con {quantity} unidades',
+                'new_stock' : product['stock'] if product else 0
             })
         else:
             return jsonify({'success': False, 'error': 'Error al reabastecer'}), 500
@@ -252,11 +269,10 @@ def update_product_in_door(door_id):
         return jsonify({'success': False, 'error': 'Datos requeridos'}), 400
     
     try:
-        success = restock_controller.update_product_in_door(door_id, data)
-        if success:
+        if restock_controller.update_product_in_door(door_id, data):
             return jsonify({
-                'success': True,
-                'message': f'Producto en puerta {door_id} actualizado'
+                'success'   : True,
+                'message'   : f'Producto en puerta {door_id} actualizado'
             })
         else:
             return jsonify({'success': False, 'error': 'Error al actualizar producto'}), 500
@@ -280,9 +296,9 @@ def test_dispense(door_id):
         if gpio_success:
             logger.info(f"Test dispensado - Puerta: {door_id}")
             return jsonify({
-                'success': True, 
-                'message': f'Test dispensado ejecutado para puerta {door_id}',
-                'gpio_pin': door_config.get('gpio_pin')
+                'success'   : True, 
+                'message'   : f'Test dispensado ejecutado para puerta {door_id}',
+                'gpio_pin'  : door_config.get('gpio_pin')
             })
         else:
             return jsonify({'success': False, 'error': 'Error al activar GPIO'}), 500
@@ -300,10 +316,10 @@ def get_today_sales():
         total_amount = sum(sale['amount'] for sale in sales if sale['status'] == 'completed')
         
         return jsonify({
-            'success': True,
-            'sales': sales,
-            'total_sales': len([s for s in sales if s['status'] == 'completed']),
-            'total_amount': total_amount
+            'success'       : True,
+            'sales'         : sales,
+            'total_sales'   : len([s for s in sales if s['status'] == 'completed']),
+            'total_amount'  : total_amount
         })
         
     except Exception as e:

@@ -9,7 +9,7 @@
     "restock_mode": {
       "enabled": true,
       "gpio_pin": 16,
-      "activated_at": "2025-07-24T16:15:25.744350",
+      "activated_at": "2025-07-24T17:56:41.730951",
       "secret_sequence": {
         "enabled": true,
         "sequence": [
@@ -21,7 +21,7 @@
           "C1"
         ],
         "timeout": 5,
-        "max_attempts": 3
+        "max_attempts": 3000000000000
       }
     }
   },
@@ -55,25 +55,25 @@
     },
     "B2": {
       "id": "B2",
-      "gpio_pin": 21,
+      "gpio_pin": 18,
       "sensor_pin": 20,
-      "relay_matrix": false,
-      "relay_index": 0,
+      "relay_matrix": true,
+      "relay_index": 3,
       "door_open": false,
       "last_maintenance": null
     },
     "C1": {
       "id": "C1",
-      "gpio_pin": 22,
+      "gpio_pin": 18,
       "sensor_pin": 21,
-      "relay_matrix": false,
-      "relay_index": 0,
+      "relay_matrix": true,
+      "relay_index": 4,
       "door_open": false,
       "last_maintenance": null
     },
     "C2": {
       "id": "C2",
-      "gpio_pin": 22,
+      "gpio_pin": 18,
       "sensor_pin": 22,
       "relay_matrix": true,
       "relay_index": 1,
@@ -82,10 +82,10 @@
     },
     "D1": {
       "id": "D1",
-      "gpio_pin": 26,
+      "gpio_pin": 18,
       "sensor_pin": 23,
-      "relay_matrix": false,
-      "relay_index": 0,
+      "relay_matrix": true,
+      "relay_index": 2,
       "door_open": false,
       "last_maintenance": null
     },

@@ -17,13 +17,35 @@ class RestockController:
         self.restock_mode = False
         self.restock_pin = config_manager.config.get('machine', {}).get('restock_mode', {}).get('gpio_pin', 16)
         
-        # Secuencia secreta
+        # Secuencia secreta (legacy - mantener por compatibilidad)
         self.secret_sequence_enabled = config_manager.is_secret_sequence_enabled()
         self.secret_sequence = config_manager.get_secret_sequence()
         self.sequence_timeout = config_manager.get_sequence_timeout()
         self.max_attempts = config_manager.get_max_sequence_attempts()
         
-        # Estado de la secuencia
+        # Nuevo sistema de activación por clics
+        self.click_activation_enabled = True
+        self.click_sequence = {
+            'first_phase': 5,       # 5 clics iniciales
+            'pause_min': 2.0,       # Mínimo 2 segundos de pausa (más fácil)
+            'pause_max': 10.0,      # Máximo 10 segundos de pausa (muy flexible)
+            'second_phase': 5,      # 5 clics finales
+            'click_timeout': 3.0,   # Tiempo máximo entre clics (3 segundos, muy fácil)
+            'total_timeout': 30.0   # Tiempo total máximo para toda la secuencia
+        }
+        
+        # Estado del sistema de clics
+        self.click_state = {
+            'phase': 'idle',        # idle, first_clicks, waiting_pause, second_clicks, completed
+            'clicks_count': 0,
+            'last_click_time': None,
+            'sequence_start_time': None,
+            'pause_start_time': None,
+            'failed_attempts': 0,
+            'max_failed_attempts': 10  # Más intentos permitidos
+        }
+        
+        # Estado de la secuencia secreta (legacy)
         self.current_sequence = []
         self.sequence_start_time = None
         self.failed_attempts = 0
@@ -42,6 +64,8 @@ class RestockController:
         
         if self.secret_sequence_enabled:
             logger.info(f"Secuencia secreta habilitada: {len(self.secret_sequence)} pasos")
+        
+        logger.info(f"Sistema de activación por clics habilitado: {self.click_sequence['first_phase']}+pausa+{self.click_sequence['second_phase']} clics")
     
     def _setup_gpio(self):
         """Configurar GPIO para el botón de reposición"""
@@ -197,7 +221,216 @@ class RestockController:
             logger.error(f"Error al reabastecer puerta {door_id}: {e}")
             return False
     
-    def process_door_selection(self, door_id: str) -> Dict[str, Any]:
+    def process_screen_click(self) -> Dict[str, Any]:
+        """
+        Procesar clic en pantalla para activación de modo restock
+        Secuencia: 5 clics + pausa 5-6s + 5 clics
+        """
+        if not self.click_activation_enabled:
+            return {'activation_system': 'disabled'}
+        
+        current_time = time.time()
+        
+        # Verificar timeout total
+        if (self.click_state['sequence_start_time'] and 
+            current_time - self.click_state['sequence_start_time'] > self.click_sequence['total_timeout']):
+            logger.debug("Timeout total de secuencia de clics - reiniciando")
+            self._reset_click_sequence()
+        
+        # Procesar según la fase actual
+        if self.click_state['phase'] == 'idle':
+            return self._start_click_sequence(current_time)
+        
+        elif self.click_state['phase'] == 'first_clicks':
+            return self._process_first_clicks(current_time)
+        
+        elif self.click_state['phase'] == 'waiting_pause':
+            return self._process_during_pause(current_time)
+        
+        elif self.click_state['phase'] == 'second_clicks':
+            return self._process_second_clicks(current_time)
+        
+        else:
+            self._reset_click_sequence()
+            return {'phase': 'error', 'message': 'Estado inválido - secuencia reiniciada'}
+    
+    def _start_click_sequence(self, current_time: float) -> Dict[str, Any]:
+        """Iniciar nueva secuencia de clics"""
+        self.click_state.update({
+            'phase': 'first_clicks',
+            'clicks_count': 1,
+            'last_click_time': current_time,
+            'sequence_start_time': current_time,
+            'pause_start_time': None
+        })
+        
+        logger.debug("Iniciando secuencia de activación por clics - Primera fase")
+        return {
+            'phase': 'first_clicks',
+            'clicks_count': 1,
+            'clicks_needed': self.click_sequence['first_phase'],
+            'message': f'Clic 1/{self.click_sequence["first_phase"]} - Continúa haciendo clic'
+        }
+    
+    def _process_first_clicks(self, current_time: float) -> Dict[str, Any]:
+        """Procesar clics de la primera fase"""
+        # Verificar timeout entre clics
+        if current_time - self.click_state['last_click_time'] > self.click_sequence['click_timeout']:
+            logger.debug("Timeout entre clics - reiniciando secuencia")
+            self._reset_click_sequence()
+            return self._start_click_sequence(current_time)
+        
+        self.click_state['clicks_count'] += 1
+        self.click_state['last_click_time'] = current_time
+        
+        if self.click_state['clicks_count'] >= self.click_sequence['first_phase']:
+            # Primera fase completada - iniciar pausa
+            self.click_state.update({
+                'phase': 'waiting_pause',
+                'pause_start_time': current_time
+            })
+            
+            logger.debug("Primera fase completada - Esperando pausa de 5-6 segundos")
+            return {
+                'phase': 'waiting_pause',
+                'message': 'Primera fase completada. Espera 5-6 segundos antes de continuar.',
+                'pause_min': self.click_sequence['pause_min'],
+                'pause_max': self.click_sequence['pause_max']
+            }
+        else:
+            return {
+                'phase': 'first_clicks',
+                'clicks_count': self.click_state['clicks_count'],
+                'clicks_needed': self.click_sequence['first_phase'],
+                'message': f'Clic {self.click_state["clicks_count"]}/{self.click_sequence["first_phase"]} - Continúa'
+            }
+    
+    def _process_during_pause(self, current_time: float) -> Dict[str, Any]:
+        """Procesar clic durante la pausa (debe esperar)"""
+        pause_duration = current_time - self.click_state['pause_start_time']
+        
+        if pause_duration < self.click_sequence['pause_min']:
+            # Clic muy temprano - reiniciar
+            logger.debug(f"Clic muy temprano durante pausa ({pause_duration:.1f}s) - reiniciando")
+            self._reset_click_sequence()
+            return {
+                'phase': 'failed',
+                'message': f'Debes esperar al menos {self.click_sequence["pause_min"]} segundos. Reiniciando...',
+                'failed_attempts': self._increment_failed_attempts()
+            }
+        
+        elif pause_duration > self.click_sequence['pause_max']:
+            # Pausa muy larga - reiniciar
+            logger.debug(f"Pausa muy larga ({pause_duration:.1f}s) - reiniciando")
+            self._reset_click_sequence()
+            return {
+                'phase': 'failed',
+                'message': f'Pausa demasiado larga ({pause_duration:.1f}s). Máximo {self.click_sequence["pause_max"]}s. Reiniciando...',
+                'failed_attempts': self._increment_failed_attempts()
+            }
+        
+        else:
+            # Pausa correcta - iniciar segunda fase
+            self.click_state.update({
+                'phase': 'second_clicks',
+                'clicks_count': 1,
+                'last_click_time': current_time
+            })
+            
+            logger.debug(f"Pausa correcta ({pause_duration:.1f}s) - Iniciando segunda fase")
+            return {
+                'phase': 'second_clicks',
+                'clicks_count': 1,
+                'clicks_needed': self.click_sequence['second_phase'],
+                'message': f'¡Perfecto! Pausa de {pause_duration:.1f}s. Clic 1/{self.click_sequence["second_phase"]} de la segunda fase'
+            }
+    
+    def _process_second_clicks(self, current_time: float) -> Dict[str, Any]:
+        """Procesar clics de la segunda fase"""
+        # Verificar timeout entre clics
+        if current_time - self.click_state['last_click_time'] > self.click_sequence['click_timeout']:
+            logger.debug("Timeout entre clics en segunda fase - reiniciando")
+            self._reset_click_sequence()
+            return {
+                'phase': 'failed',
+                'message': 'Tiempo agotado entre clics. Reiniciando secuencia...',
+                'failed_attempts': self._increment_failed_attempts()
+            }
+        
+        self.click_state['clicks_count'] += 1
+        self.click_state['last_click_time'] = current_time
+        
+        if self.click_state['clicks_count'] >= self.click_sequence['second_phase']:
+            # Secuencia completada - activar modo restock
+            logger.info("¡Secuencia de activación por clics completada! Activando modo restock")
+            self._reset_click_sequence()
+            self.activate_restock_mode()
+            
+            return {
+                'phase': 'completed',
+                'restock_activated': True,
+                'message': '¡Secuencia completada! Modo restock activado.',
+                'success': True
+            }
+        else:
+            return {
+                'phase': 'second_clicks',
+                'clicks_count': self.click_state['clicks_count'],
+                'clicks_needed': self.click_sequence['second_phase'],
+                'message': f'Clic {self.click_state["clicks_count"]}/{self.click_sequence["second_phase"]} - ¡Casi listo!'
+            }
+    
+    def _increment_failed_attempts(self) -> int:
+        """Incrementar contador de intentos fallidos"""
+        self.click_state['failed_attempts'] += 1
+        
+        if self.click_state['failed_attempts'] >= self.click_state['max_failed_attempts']:
+            # Solo bloquear después de muchos fallos consecutivos
+            logger.warning(f"Muchos intentos fallidos ({self.click_state['max_failed_attempts']}) - pausa temporal de 5 segundos")
+            self._reset_click_sequence()
+            # Esperar solo 5 segundos antes de permitir nuevos intentos
+            self.click_state['blocked_until'] = time.time() + 5
+            self.click_state['failed_attempts'] = 0  # Resetear contador
+            
+        return self.click_state['failed_attempts']
+    
+    def _reset_click_sequence(self):
+        """Resetear estado de secuencia de clics"""
+        self.click_state.update({
+            'phase': 'idle',
+            'clicks_count': 0,
+            'last_click_time': None,
+            'sequence_start_time': None,
+            'pause_start_time': None
+        })
+    
+    def get_click_activation_status(self) -> Dict[str, Any]:
+        """Obtener estado del sistema de activación por clics"""
+        current_time = time.time()
+        
+        # Verificar si está bloqueado
+        blocked_until = self.click_state.get('blocked_until', 0)
+        is_blocked = current_time < blocked_until
+        
+        status = {
+            'enabled': self.click_activation_enabled,
+            'phase': self.click_state['phase'],
+            'clicks_count': self.click_state['clicks_count'],
+            'failed_attempts': self.click_state['failed_attempts'],
+            'max_failed_attempts': self.click_state['max_failed_attempts'],
+            'is_blocked': is_blocked,
+            'sequence_config': self.click_sequence
+        }
+        
+        if is_blocked:
+            status['blocked_time_remaining'] = blocked_until - current_time
+        
+        if self.click_state['phase'] == 'waiting_pause' and self.click_state['pause_start_time']:
+            pause_duration = current_time - self.click_state['pause_start_time']
+            status['pause_duration'] = pause_duration
+            status['pause_valid'] = (self.click_sequence['pause_min'] <= pause_duration <= self.click_sequence['pause_max'])
+        
+        return status
         """Procesar selección de puerta para secuencia secreta"""
         if not self.secret_sequence_enabled or self.restock_mode:
             return {'sequence_active': False}

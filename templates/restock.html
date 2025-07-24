@@ -44,10 +44,17 @@
             display: flex;
             gap: 5px;
             margin-top: 10px;
+            flex-wrap: wrap;
         }
         
         .stock-controls input {
             width: 60px;
+        }
+        
+        .stock-controls .btn {
+            font-size: 12px;
+            padding: 4px 8px;
+        }
         }
     </style>
 </head>
@@ -395,12 +402,18 @@
 
         async function loadDoors() {
             try {
+                console.log('Cargando datos de puertas...');
                 const response = await fetch('/api/doors');
                 const data = await response.json();
                 
+                console.log('Respuesta del servidor:', data);
+                
                 if (data.success) {
                     doors = data.doors;
+                    console.log('Puertas cargadas:', Object.keys(doors).length);
                     renderDoors();
+                } else {
+                    console.error('Error en respuesta del servidor:', data.error);
                 }
             } catch (error) {
                 console.error('Error al cargar puertas:', error);
@@ -449,9 +462,18 @@
 
         function renderDoors() {
             const grid = document.getElementById('doors-grid');
+            console.log('Renderizando puertas. Grid encontrado:', !!grid);
+            console.log('Número de puertas a renderizar:', Object.keys(doors).length);
+            
+            if (!grid) {
+                console.error('No se encontró el elemento doors-grid');
+                return;
+            }
+            
             grid.innerHTML = '';
             
             Object.entries(doors).forEach(([doorId, door]) => {
+                console.log(`Procesando puerta ${doorId}:`, door);
                 const product = door.product;
                 const status = door.status || 'no_product';
                 
@@ -474,16 +496,24 @@
                         
                         ${restockMode ? `
                             <div class="stock-controls">
-                                <button class="btn btn-sm btn-primary" 
-                                        onclick="editProduct('${doorId}')">✏️</button>
+                                <button class="btn btn-sm btn-primary me-1" 
+                                        onclick="editProduct('${doorId}')">✏️ Editar</button>
+                                <button class="btn btn-sm btn-success" 
+                                        onclick="openDoorFromInventory('${doorId}')" 
+                                        title="Abrir puerta">🔓 Abrir</button>
                             </div>
                         ` : ''}
                     ` : `
                         <div class="text-muted">
                             <p>Sin producto configurado</p>
                             ${restockMode ? `
-                                <button class="btn btn-sm btn-primary" 
-                                        onclick="editProduct('${doorId}')">Configurar Producto</button>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-primary" 
+                                            onclick="editProduct('${doorId}')">Configurar Producto</button>
+                                    <button class="btn btn-sm btn-success" 
+                                            onclick="openDoorFromInventory('${doorId}')" 
+                                            title="Abrir puerta">🔓 Abrir</button>
+                                </div>
                             ` : ''}
                         </div>
                     `}
@@ -953,6 +983,66 @@
                 console.error('Error:', error);
                 alert('❌ Error de conexión');
             }
+        }
+
+        // Abrir puerta desde el inventario
+        async function openDoorFromInventory(doorId) {
+            try {
+                // Mostrar indicador de carga en el botón
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '⏳ Abriendo...';
+                
+                const response = await fetch(`/api/hardware/door/${doorId}/open`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Mostrar confirmación visual temporal
+                    button.innerHTML = '✅ Abierta';
+                    button.className = 'btn btn-sm btn-success';
+                    
+                    // Restaurar botón después de 2 segundos
+                    setTimeout(() => {
+                        button.disabled = false;
+                        button.innerHTML = originalText;
+                        button.className = 'btn btn-sm btn-success';
+                    }, 2000);
+                } else {
+                    // Mostrar error
+                    button.innerHTML = '❌ Error';
+                    button.className = 'btn btn-sm btn-danger';
+                    
+                    // Restaurar botón después de 2 segundos
+                    setTimeout(() => {
+                        button.disabled = false;
+                        button.innerHTML = originalText;
+                        button.className = 'btn btn-sm btn-success';
+                    }, 2000);
+                    
+                    console.error('Error al abrir puerta:', data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                
+                // Restaurar botón en caso de error
+                const button = event.target;
+                button.disabled = false;
+                button.innerHTML = '❌ Error';
+                button.className = 'btn btn-sm btn-danger';
+                
+                setTimeout(() => {
+                    button.innerHTML = '🔓 Abrir';
+                    button.className = 'btn btn-sm btn-success';
+                }, 2000);
+            }
+        }
+
+        // Probar puerta específica
+        async function testDoorHardware(doorId) {
+            alert('❌ Error de conexión');
         }
 
         // Probar puerta específica

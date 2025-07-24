@@ -217,6 +217,43 @@ class VendingMachineSimple {
         
         // Aplicar idioma seleccionado al cargar
         this.updateLanguageInterface();
+        
+        // No mostrar estado de activación - mantener silencioso
+    }
+
+    async checkRestockActivationStatus() {
+        try {
+            const response = await fetch('/api/restock/click/status');
+            const result = await response.json();
+            
+            if (result.success && result.status.phase !== 'idle') {
+                const status = result.status;
+                let message = '';
+                
+                switch (status.phase) {
+                    case 'first_clicks':
+                        message = `🔄 Activación en progreso: ${status.clicks_count}/${status.sequence_config.first_phase} clics`;
+                        print(`Activación en progreso: ${status.clicks_count}/${status.sequence_config.first_phase} clics`);
+                        break;
+                    case 'waiting_pause':
+                        const pauseDuration = status.pause_duration || 0;
+                        const isValid = status.pause_valid;
+                        message = `⏳ Esperando pausa: ${pauseDuration.toFixed(1)}s ${isValid ? '✅' : '⏱️'}`;
+                        print(`Esperando pausa: ${pauseDuration.toFixed(1)}s ${isValid ? '✅' : '⏱️'}`);
+                        break;
+                    case 'second_clicks':
+                        message = `🔄 Segunda fase: ${status.clicks_count}/${status.sequence_config.second_phase} clics`;
+                        print(`Segunda fase: ${status.clicks_count}/${status.sequence_config.second_phase} clics`);
+                        break;
+                }
+                
+                if (message) {
+                    this.showRestockNotification(message, 'info', 5000);
+                }
+            }
+        } catch (error) {
+            console.error('Error al verificar estado de activación:', error);
+        }
     }
 
     updateLanguageInterface() {
@@ -397,12 +434,161 @@ class VendingMachineSimple {
             this.processContactlessPayment();
         });
 
+        // Sistema de activación de restock por clics
+        document.addEventListener('click', (e) => {
+            // Solo procesar si no hay modales abiertos y no estamos en screensaver
+            if (!document.querySelector('.modal.show') && 
+                document.getElementById('main-app').style.display !== 'none') {
+                this.processRestockActivationClick();
+            }
+        });
+
         // Detectar actividad para resetear screensaver
-        ['click', 'mousemove', 'keydown', 'touchstart'].forEach(event => {
+        ['mousemove', 'keydown', 'touchstart'].forEach(event => {
             document.addEventListener(event, () => {
                 this.startScreensaverTimer();
             });
         });
+    }
+
+    async processRestockActivationClick() {
+        try {
+            const response = await fetch('/api/restock/click', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.handleRestockActivationResponse(result);
+            } else {
+                console.error('Error en activación de restock:', result.error);
+            }
+        } catch (error) {
+            console.error('Error al procesar clic de activación:', error);
+        }
+    }
+
+    handleRestockActivationResponse(result) {
+        // Mostrar notificaciones temporales para ayudar con la secuencia
+        
+        switch (result.phase) {
+            case 'first_clicks':
+                // Mostrar progreso de primera fase
+                this.showRestockNotification(
+                    `🔄 Clics: ${result.clicks_count}/${result.clicks_needed} - Continúa`, 
+                    'info', 
+                    1000
+                );
+                break;
+                
+            case 'waiting_pause':
+                // Mostrar que necesita esperar
+                this.showRestockNotification(
+                    `⏳ ¡Perfecto! Ahora espera 2-10 segundos antes de continuar`, 
+                    'warning', 
+                    3000
+                );
+                break;
+                
+            case 'second_clicks':
+                // Mostrar progreso de segunda fase
+                this.showRestockNotification(
+                    `🎯 Segunda fase: ${result.clicks_count}/${result.clicks_needed} - ¡Casi listo!`, 
+                    'success', 
+                    1000
+                );
+                break;
+                
+            case 'completed':
+                // Redirigir directamente a la pantalla de restock
+                if (result.restock_activated) {
+                    this.showRestockNotification(
+                        `✅ ¡Modo Restock Activado! Redirigiendo...`, 
+                        'success', 
+                        2000
+                    );
+                    setTimeout(() => {
+                        window.location.href = '/restock';
+                    }, 1000);
+                }
+                break;
+                
+            case 'failed':
+                // Mostrar ayuda cuando falla
+                this.showRestockNotification(
+                    `❌ Secuencia fallida. Intenta: 5 clics rápidos → espera 2-10s → 5 clics más`, 
+                    'error', 
+                    4000
+                );
+                break;
+        }
+    }
+
+    showRestockNotification(message, type = 'info', duration = 3000) {
+        // Crear contenedor de notificación si no existe
+        let container = document.getElementById('restock-notification-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'restock-notification-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 10000;
+                pointer-events: none;
+            `;
+            document.body.appendChild(container);
+        }
+
+        // Crear notificación
+        const notification = document.createElement('div');
+        notification.className = `restock-notification restock-${type}`;
+        notification.style.cssText = `
+            background: ${type === 'success' ? '#28a745' : 
+                        type === 'error' ? '#dc3545' : 
+                        type === 'warning' ? '#ffc107' : '#007bff'};
+            color: ${type === 'warning' ? '#000' : '#fff'};
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            pointer-events: auto;
+            max-width: 350px;
+            word-wrap: break-word;
+        `;
+        notification.textContent = message;
+
+        container.appendChild(notification);
+
+        // Animar entrada
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 10);
+
+        // Programar eliminación
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, duration);
+    }
+
+    hideRestockNotification() {
+        const container = document.getElementById('restock-notification-container');
+        if (container) {
+            container.innerHTML = '';
+        }
     }
 
     showContactlessModal() {
