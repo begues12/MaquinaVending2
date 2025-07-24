@@ -6,7 +6,7 @@
 const TRANSLATIONS = {
     'ca': {
         // Salvapantallas
-        'screensaver_title': 'Màquina Expenedora v2.0',
+        'screensaver_title': 'Floradomicilio.com',
         'screensaver_subtitle': 'Prem qualsevol lloc per començar',
         
         // Interfaz principal
@@ -86,7 +86,7 @@ const TRANSLATIONS = {
     
     'es': {
         // Salvapantallas
-        'screensaver_title': 'Máquina Expendedora v2.0',
+        'screensaver_title': 'Floradomicilio.com',
         'screensaver_subtitle': 'Presiona cualquier lugar para comenzar',
         
         // Interfaz principal
@@ -166,7 +166,7 @@ const TRANSLATIONS = {
     
     'en': {
         // Salvapantallas
-        'screensaver_title': 'Vending Machine v2.0',
+        'screensaver_title': 'Floradomicilio.com',
         'screensaver_subtitle': 'Press anywhere to start',
         
         // Interfaz principal

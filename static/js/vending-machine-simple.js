@@ -328,7 +328,7 @@ class VendingMachineSimple {
         if (doorData.status === 'blocked') {
             status = 'blocked';
             statusText = 'Bloqueado';
-        } else if (doorData.product.stock <= 0) {
+        } else if (doorData.product && doorData.product.stock <= 0) {
             status = 'out-of-stock';
             statusText = 'Sin stock';
         }
@@ -350,35 +350,34 @@ class VendingMachineSimple {
         // Verificar secuencia secreta primero - SIEMPRE
         this.checkSecretSequence(doorId);
         
-        // Solo proceder con la compra si la puerta está disponible
-        if (doorData.status !== 'available' || doorData.product.stock <= 0) {
+        // Solo proceder con la compra si la puerta está disponible y tiene producto
+        if (doorData.status !== 'available' || !doorData.product || doorData.product.stock <= 0) {
             // Para puertas no disponibles, solo verificamos secuencia secreta
             console.log(`Puerta ${doorId} no disponible para compra, pero verificada para secuencia secreta`);
             return;
         }
         
-        // Resetear selección anterior
         this.clearSelection();
         
-        // Marcar puerta seleccionada
         const doorSquare = document.querySelector(`[data-door-id="${doorId}"]`);
         doorSquare.classList.add('selected');
         
         this.selectedDoor = doorId;
         
-        // Mostrar modal de producto
         this.showProductModal(doorId, doorData);
         
-        // Reiniciar timer de screensaver
         this.startScreensaverTimer();
     }
 
     showProductModal(doorId, doorData) {
-        // Actualizar información del modal (solo precio y puerta)
+        if (!doorData.product) {
+            console.error(`No hay producto configurado para la puerta ${doorId}`);
+            return;
+        }
+        
         document.getElementById('modal-door-number').textContent = doorId;
         document.getElementById('modal-product-price').textContent = doorData.product.price.toFixed(2);
         
-        // Actualizar badge de stock
         const stockBadge = document.getElementById('modal-stock-badge');
         if (doorData.product.stock > 0) {
             stockBadge.innerHTML = '<i class="bi bi-check-circle"></i> En stock';
@@ -388,26 +387,21 @@ class VendingMachineSimple {
             stockBadge.className = 'badge bg-danger fs-6';
         }
         
-        // Mostrar modal
         const modal = new bootstrap.Modal(document.getElementById('productModal'));
         modal.show();
         
-        // Guardar referencia del modal para uso posterior
         this.currentModal = modal;
     }
 
     showDoorInfo(doorId, doorData) {
-        // Esta función ya no se usa, mantenida para compatibilidad
-        // La nueva implementación usa showProductModal
     }
 
     clearSelection() {
-        // Limpiar selección visual
+
         document.querySelectorAll('.door-square.selected').forEach(square => {
             square.classList.remove('selected');
         });
         
-        // Cerrar modal si está abierto
         if (this.currentModal) {
             this.currentModal.hide();
             this.currentModal = null;
@@ -417,33 +411,27 @@ class VendingMachineSimple {
     }
 
     setupEventListeners() {
-        // Botón continuar compra desde el modal de producto
+
         document.getElementById('modal-continue-purchase').addEventListener('click', () => {
             this.showContactlessModal();
         });
         
-        // Eventos del modal de producto
         document.getElementById('productModal').addEventListener('hidden.bs.modal', () => {
-            // Limpiar selección cuando se cierra el modal
             this.clearSelection();
             this.startScreensaverTimer();
         });
 
-        // Botón de pago contactless
         document.getElementById('contactless-pay-btn').addEventListener('click', () => {
             this.processContactlessPayment();
         });
 
-        // Sistema de activación de restock por clics
         document.addEventListener('click', (e) => {
-            // Solo procesar si no hay modales abiertos y no estamos en screensaver
             if (!document.querySelector('.modal.show') && 
                 document.getElementById('main-app').style.display !== 'none') {
                 this.processRestockActivationClick();
             }
         });
 
-        // Detectar actividad para resetear screensaver
         ['mousemove', 'keydown', 'touchstart'].forEach(event => {
             document.addEventListener(event, () => {
                 this.startScreensaverTimer();
@@ -473,44 +461,24 @@ class VendingMachineSimple {
     }
 
     handleRestockActivationResponse(result) {
-        // Mostrar notificaciones temporales para ayudar con la secuencia
         
         switch (result.phase) {
             case 'first_clicks':
-                // Mostrar progreso de primera fase
-                this.showRestockNotification(
-                    `🔄 Clics: ${result.clicks_count}/${result.clicks_needed} - Continúa`, 
-                    'info', 
-                    1000
-                );
+
                 break;
                 
             case 'waiting_pause':
-                // Mostrar que necesita esperar
-                this.showRestockNotification(
-                    `⏳ ¡Perfecto! Ahora espera 2-10 segundos antes de continuar`, 
-                    'warning', 
-                    3000
-                );
+
+
                 break;
                 
             case 'second_clicks':
-                // Mostrar progreso de segunda fase
-                this.showRestockNotification(
-                    `🎯 Segunda fase: ${result.clicks_count}/${result.clicks_needed} - ¡Casi listo!`, 
-                    'success', 
-                    1000
-                );
-                break;
-                
+
+       
             case 'completed':
-                // Redirigir directamente a la pantalla de restock
-                if (result.restock_activated) {
-                    this.showRestockNotification(
-                        `✅ ¡Modo Restock Activado! Redirigiendo...`, 
-                        'success', 
-                        2000
-                    );
+
+            if (result.restock_activated) {
+                  
                     setTimeout(() => {
                         window.location.href = '/restock';
                     }, 1000);
@@ -518,12 +486,7 @@ class VendingMachineSimple {
                 break;
                 
             case 'failed':
-                // Mostrar ayuda cuando falla
-                this.showRestockNotification(
-                    `❌ Secuencia fallida. Intenta: 5 clics rápidos → espera 2-10s → 5 clics más`, 
-                    'error', 
-                    4000
-                );
+
                 break;
         }
     }
@@ -595,6 +558,11 @@ class VendingMachineSimple {
         if (!this.selectedDoor) return;
         
         const doorData = this.doorsData[this.selectedDoor];
+        if (!doorData.product) {
+            console.error(`No hay producto configurado para la puerta ${this.selectedDoor}`);
+            return;
+        }
+        
         document.getElementById('contactless-total').textContent = `€${doorData.product.price.toFixed(2)}`;
         
         const modal = new bootstrap.Modal(document.getElementById('contactlessModal'));
@@ -607,6 +575,10 @@ class VendingMachineSimple {
         if (!this.selectedDoor) return;
 
         const doorData = this.doorsData[this.selectedDoor];
+        if (!doorData.product) {
+            console.error(`No hay producto configurado para la puerta ${this.selectedDoor}`);
+            return;
+        }
         
         try {
             // Mostrar estado de procesamiento TPV
@@ -781,9 +753,9 @@ class VendingMachineSimple {
         let emptyCount = 0;
         
         Object.values(this.doorsData).forEach(door => {
-            if (door.status === 'available' && door.product.stock > 0) {
+            if (door.status === 'available' && door.product && door.product.stock > 0) {
                 availableCount++;
-            } else if (door.product.stock <= 0) {
+            } else if (!door.product || door.product.stock <= 0) {
                 emptyCount++;
             }
         });

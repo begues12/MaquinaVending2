@@ -19,7 +19,9 @@ class Config:
     PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID')
     PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET')
     PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')
-    
+        
+    FULLSCREEN_MODE = False  # Cambiar a True para iniciar en fullscreen
+
     # Configuración del sistema
     PLATFORM = os.environ.get('PLATFORM', 'windows')
     GPIO_ENABLED = os.environ.get('GPIO_ENABLED', 'False').lower() == 'true'

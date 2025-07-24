@@ -303,7 +303,6 @@ header {
 }
 
 .door-status {
-    font-size: clamp(0.6rem, 2vw, 0.75rem);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -325,18 +324,6 @@ header {
 
 .door-square.selected .door-status {
     color: #007bff;
-}
-
-/* Icono de estado en la esquina */
-.door-square::before {
-    content: '';
-    position: absolute;
-    top: clamp(4px, 1vw, 8px);
-    right: clamp(4px, 1vw, 8px);
-    width: clamp(8px, 2vw, 12px);
-    height: clamp(8px, 2vw, 12px);
-    border-radius: 50%;
-    background: #28a745;
 }
 
 .door-square.out-of-stock::before {

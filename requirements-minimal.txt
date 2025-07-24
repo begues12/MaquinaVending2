@@ -1,0 +1,31 @@
+# Vending Machine Essential Dependencies
+# Core web framework
+Flask==3.0.3
+flask-cors==6.0.1
+
+# Database
+# (SQLite is included with Python)
+
+# Environment configuration
+python-dotenv==1.0.1
+
+# Payment processing
+stripe==12.3.0
+paypalrestsdk==1.13.3
+
+# Hardware communication
+pyserial==3.5
+
+# Desktop application
+pywebview==5.4
+
+# Required by pywebview
+pythonnet==3.0.5
+proxy_tools==0.1.0
+
+# Required by payment systems
+requests==2.32.3
+pyopenssl==25.1.0
+
+# Common utilities
+typing_extensions==4.14.1

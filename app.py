@@ -750,12 +750,12 @@ def start_app():
     try:
         # Configurar PyWebView
         webview.create_window(
-            'Máquina Expendedora v2.0',
+            'Floradomicilio.com',
             app,
             width=Config.WINDOW_WIDTH,
             height=Config.WINDOW_HEIGHT,
             resizable=True,
-            fullscreen=False
+            fullscreen=True
         )
         
         logger.info("Iniciando aplicación...")

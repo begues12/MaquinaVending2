@@ -1,16 +1,35 @@
-Flask==3.0.0
-Flask-CORS==4.0.0
+# Vending Machine Project Dependencies
+
+# Core web framework
+Flask==3.0.3
+Flask-CORS==6.0.1
+
+# Desktop application framework  
 pywebview==5.4
-requests==2.31.0
+pythonnet==3.0.5
+proxy_tools==0.1.0
+
+# Environment configuration
 python-dotenv==1.0.1
-stripe==8.2.0
-paypalrestsdk==1.13.1
+
+# HTTP requests
+requests==2.32.3
+
+# Payment processing
+stripe==12.3.0
+paypalrestsdk==1.13.3
+pyopenssl==25.1.0
+
+# Hardware communication (TPV and GPIO)
 pyserial==3.5
 
 # GPIO libraries (install only on Raspberry Pi)
 # RPi.GPIO==0.7.1
 # gpiozero==1.6.2
 
-# Development dependencies
-pytest==7.4.4
-black==24.1.1
+# Development dependencies (optional)
+# pytest==7.4.4
+# black==24.1.1
+
+# Runtime dependencies
+typing_extensions==4.14.1
