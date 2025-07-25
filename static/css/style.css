@@ -954,3 +954,92 @@ header {
 .dev-float-button:hover .tooltip {
     opacity: 1;
 }
+
+/* === SALVAPANTALLAS DE PUERTA ABIERTA === */
+#door-open-screensaver {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #dee2e6 100%);
+}
+
+.door-open-title {
+    font-size: 3.5rem;
+    font-weight: bold;
+    color: #212529;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.door-open-subtitle {
+    font-size: 2.5rem;
+    color: #495057;
+    font-weight: 600;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.door-open-message {
+    font-size: 1.8rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.door-open-icon {
+    color: #0d6efd !important;
+}
+
+.timer-circle {
+    width: 150px;
+    height: 150px;
+    border: 8px solid #0d6efd;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    background: rgba(13, 110, 253, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.timer-text {
+    text-align: center;
+    color: #212529;
+}
+
+.timer-text span {
+    font-size: 3rem;
+    font-weight: bold;
+    display: block;
+    color: #212529;
+}
+
+.timer-text small {
+    font-size: 1rem;
+    color: #6c757d;
+    opacity: 0.9;
+}
+
+.progress-bar-container {
+    width: 500px;
+    height: 20px;
+    background: rgba(13, 110, 253, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 0 auto 15px;
+    border: 3px solid #0d6efd;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: #0d6efd;
+    border-radius: 7px;
+    transition: width 1s linear;
+}
+
+.progress-text {
+    color: #495057;
+    font-size: 1.2rem;
+    margin: 0;
+    font-weight: 500;
+}
+
+.door-open-footer p {
+    color: #6c757d;
+    font-size: 1.1rem;
+}

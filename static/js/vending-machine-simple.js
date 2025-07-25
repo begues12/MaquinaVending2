@@ -7,6 +7,7 @@ class VendingMachineSimple {
         this.screensaverDelay = (this.config.display?.screensaver_timeout || 30) * 1000;
         this.currentLanguage = localStorage.getItem('vendingLanguage') || 'es';
         this.languageSelector = null;
+        this.doorCountdownInterval = null; // Para el countdown de puerta abierta
         
         // Sistema de secuencia secreta táctil
         this.restockSequence = [];
@@ -526,6 +527,21 @@ class VendingMachineSimple {
                 this.startScreensaverTimer();
             });
         });
+
+        // Botón de prueba para salvapantallas de puerta (desarrollo)
+        const devDoorTest = document.getElementById('dev-door-test');
+        if (devDoorTest) {
+            devDoorTest.addEventListener('click', () => {
+                console.log('Probando salvapantallas de puerta abierta...');
+                this.selectedDoor = 'A1'; // Simular puerta seleccionada
+                this.showDoorOpenScreensaver('A1', 10); // 10 segundos de prueba
+            });
+            
+            // Mostrar en modo desarrollo
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                devDoorTest.style.display = 'block';
+            }
+        }
     }
 
     async processRestockActivationClick() {
@@ -660,6 +676,17 @@ class VendingMachineSimple {
         this.startScreensaverTimer();
     }
 
+    // Mostrar overlay de bloqueo TPV
+    showTPVBlockOverlay() {
+        const overlay = document.getElementById('tpv-block-overlay');
+        if (overlay) overlay.style.display = 'block';
+    }
+    // Ocultar overlay de bloqueo TPV
+    hideTPVBlockOverlay() {
+        const overlay = document.getElementById('tpv-block-overlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+
     async processContactlessPayment() {
         if (!this.selectedDoor) return;
 
@@ -670,6 +697,8 @@ class VendingMachineSimple {
         }
         
         try {
+            // Mostrar overlay de bloqueo
+            this.showTPVBlockOverlay();
             // Mostrar estado de procesamiento TPV
             document.getElementById('contactless-processing').style.display = 'block';
             document.getElementById('contactless-processing').innerHTML = `
@@ -707,6 +736,9 @@ class VendingMachineSimple {
             setTimeout(() => {
                 bootstrap.Modal.getInstance(document.getElementById('dispensingModal')).hide();
                 
+                // Ocultar overlay de bloqueo
+                this.hideTPVBlockOverlay();
+                
                 if (result.success) {
                     this.showSuccessResult(result);
                     this.updateDoorAfterPurchase(this.selectedDoor, result);
@@ -718,6 +750,8 @@ class VendingMachineSimple {
         } catch (error) {
             console.error('Error al procesar pago contactless:', error);
             bootstrap.Modal.getInstance(document.getElementById('contactlessModal')).hide();
+            // Ocultar overlay de bloqueo
+            this.hideTPVBlockOverlay();
             this.showErrorResult('Error de comunicación con TPV. Intenta de nuevo.');
         } finally {
             // Resetear estado del modal
@@ -732,25 +766,165 @@ class VendingMachineSimple {
     }
 
     showSuccessResult(result) {
-        const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+        // Ocultar cualquier modal abierto
+        const openModals = document.querySelectorAll('.modal.show');
+        openModals.forEach(modal => {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) {
+                bsModal.hide();
+            }
+        });
         
-        document.getElementById('status-title').textContent = '¡Compra Exitosa!';
-        document.getElementById('status-icon').innerHTML = '<i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>';
-        document.getElementById('status-message').innerHTML = `
-            <h5>Producto dispensado</h5>
-            <p>Puerta: <strong>${this.selectedDoor}</strong></p>
-            <p>Recoge tu producto de la bandeja inferior</p>
-            <div class="mt-3">
-                <small class="text-muted">Stock restante: ${result.remaining_stock || 'N/A'}</small><br>
-                <small class="text-info">Regresando a la pantalla principal en 3 segundos...</small>
+        // Obtener tiempo de apertura de puerta desde la configuración
+        const doorData = this.doorsData[this.selectedDoor];
+        let doorOpenTime = 10; // Tiempo por defecto en segundos
+        
+        if (doorData && doorData.open_time) {
+            doorOpenTime = Math.round(doorData.open_time);
+        }
+        
+        console.log('Datos de puerta:', doorData);
+        console.log('Tiempo de apertura configurado:', doorOpenTime, 'segundos');
+        
+        // Mostrar salvapantallas de puerta abierta
+        this.showDoorOpenScreensaver(this.selectedDoor, doorOpenTime);
+    }
+
+    // Mostrar salvapantallas de puerta abierta con countdown
+    showDoorOpenScreensaver(doorId, openTimeSeconds) {
+        // Ocultar la aplicación principal
+        document.getElementById('main-app').style.display = 'none';
+        
+        // Configurar y mostrar salvapantallas de puerta abierta
+        // Usar door-open-number que es el que existe en el HTML
+        document.getElementById('door-open-number').textContent = this.doorsData[doorId]?.display_name || doorId;
+        document.getElementById('door-timer-seconds').textContent = openTimeSeconds;
+        
+        const doorOpenScreen = document.getElementById('door-open-screensaver');
+        doorOpenScreen.style.display = 'flex';
+        
+        // Detener el timer del salvapantallas normal
+        if (this.screensaverTimeout) {
+            clearTimeout(this.screensaverTimeout);
+            this.screensaverTimeout = null;
+        }
+        
+        // Iniciar countdown
+        this.startDoorCountdown(openTimeSeconds);
+        
+        console.log(`Mostrando salvapantallas de puerta abierta para ${doorId} por ${openTimeSeconds} segundos`);
+    }
+
+    // Iniciar countdown de puerta abierta
+    startDoorCountdown(totalSeconds) {
+        console.log('Iniciando countdown con', totalSeconds, 'segundos');
+        
+        // Limpiar countdown previo si existe
+        if (this.doorCountdownInterval) {
+            clearInterval(this.doorCountdownInterval);
+            console.log('Limpiando countdown previo...');
+        }
+        
+        let remainingSeconds = totalSeconds;
+        const timerElement = document.getElementById('door-timer-seconds');
+        const progressBar = document.getElementById('door-progress-bar');
+        
+        if (!timerElement || !progressBar) {
+            console.error('No se encontraron elementos del timer:', {
+                timerElement: !!timerElement,
+                progressBar: !!progressBar
+            });
+            return;
+        }
+        
+        // Configurar valores iniciales
+        timerElement.textContent = remainingSeconds;
+        progressBar.style.width = '100%';
+        progressBar.style.background = '#0d6efd';
+        
+        console.log('Elementos encontrados, iniciando interval...');
+        
+        this.doorCountdownInterval = setInterval(() => {
+            remainingSeconds--;
+            console.log('Countdown:', remainingSeconds);
+            
+            // Actualizar timer
+            timerElement.textContent = remainingSeconds;
+            
+            // Actualizar barra de progreso
+            const progressPercentage = (remainingSeconds / totalSeconds) * 100;
+            progressBar.style.width = `${progressPercentage}%`;
+            
+            // Cambiar color de la barra según el tiempo restante
+            if (progressPercentage > 50) {
+                progressBar.style.background = '#0d6efd';
+            } else if (progressPercentage > 25) {
+                progressBar.style.background = '#ffc107';
+            } else {
+                progressBar.style.background = '#dc3545';
+            }
+            
+            // Cuando llega a 0, ocultar salvapantallas y mostrar agradecimiento
+            if (remainingSeconds <= 0) {
+                console.log('Countdown terminado, limpiando...');
+                clearInterval(this.doorCountdownInterval);
+                this.doorCountdownInterval = null;
+                this.hideDoorOpenScreensaver();
+                
+                // Mostrar salvapantallas de agradecimiento breve
+                setTimeout(() => {
+                    this.showBriefThankYou();
+                }, 500);
+            }
+        }, 1000);
+    }
+
+    // Ocultar salvapantallas de puerta abierta
+    hideDoorOpenScreensaver() {
+        const doorOpenScreen = document.getElementById('door-open-screensaver');
+        doorOpenScreen.style.display = 'none';
+        
+        // Limpiar countdown si está activo
+        if (this.doorCountdownInterval) {
+            clearInterval(this.doorCountdownInterval);
+            this.doorCountdownInterval = null;
+            console.log('Countdown limpiado al ocultar salvapantallas');
+        }
+        
+        console.log('Ocultando salvapantallas de puerta abierta');
+    }
+
+    // Mostrar breve mensaje de agradecimiento
+    showBriefThankYou() {
+        // Crear overlay temporal
+        const thankYouOverlay = document.createElement('div');
+        thankYouOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #dee2e6 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.5s ease-out;
+        `;
+        
+        thankYouOverlay.innerHTML = `
+            <div style="text-align: center; color: #212529;">
+                <i class="bi bi-check-circle-fill" style="font-size: 4rem; margin-bottom: 20px; color: #28a745;"></i>
+                <h1 style="font-size: 3rem; font-weight: bold; margin-bottom: 10px; color: #212529;">¡Gracias!</h1>
+                <p style="font-size: 1.5rem; color: #6c757d;">Esperamos verte pronto</p>
             </div>
         `;
         
-        modal.show();
+        document.body.appendChild(thankYouOverlay);
         
-        // Auto-cerrar después de 3 segundos y regresar a página principal
+        // Quitar después de 3 segundos y volver al salvapantallas principal
         setTimeout(() => {
-            modal.hide();
+            thankYouOverlay.remove();
             this.clearSelection();
             this.returnToMainScreen();
         }, 3000);
@@ -914,6 +1088,19 @@ class VendingMachineSimple {
         // Asegurar que todas las selecciones estén limpias
         this.clearSelection();
         
+        // Ocultar el salvapantallas de puerta abierta si está visible
+        const doorOpenScreen = document.getElementById('door-open-screensaver');
+        if (doorOpenScreen) {
+            doorOpenScreen.style.display = 'none';
+        }
+        
+        // Mostrar inmediatamente el salvapantallas principal
+        const screensaver = document.getElementById('screensaver');
+        const mainApp = document.getElementById('main-app');
+        
+        screensaver.style.display = 'flex';
+        mainApp.style.display = 'none';
+        
         // Actualizar datos de puertas desde el servidor
         this.loadDoors().then(() => {
             // Regenerar grid con datos actualizados
@@ -921,10 +1108,7 @@ class VendingMachineSimple {
             this.updateSystemStatus();
         });
         
-        // Reiniciar temporizador del salvapantallas
-        this.startScreensaverTimer();
-        
-        console.log('Regresando a pantalla principal con datos actualizados');
+        console.log('Regresando al salvapantallas principal');
     }
 
     // Método para testing GPIO

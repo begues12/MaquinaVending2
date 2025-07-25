@@ -35,6 +35,49 @@
         </div>
     </div>
 
+    <!-- Salvapantallas de Puerta Abierta -->
+    <div id="door-open-screensaver" class="screensaver-overlay" style="display: none;">
+        <div class="screensaver-content">
+            <div class="screensaver-animation">
+                   {% if config.machine.screensaver.logo_enabled and config.machine.screensaver.logo_path %}
+                    <img src="{{ url_for('static', filename=config.machine.screensaver.logo_path.replace('static/', '')) }}" 
+                         alt="Logo" class="screensaver-logo" 
+                         onerror="this.style.display='none'; document.querySelector('.screensaver-icon').style.display='block';">
+                    <i class="bi bi-flower3 screensaver-icon" style="display: none;"></i>
+                {% else %}
+                    <i class="bi bi-flower3 screensaver-icon"></i>
+                {% endif %}
+                
+                {% if config.machine.screensaver.show_machine_name %}
+                    <h1 class="screensaver-title">{{ config.machine.name }}</h1>
+                {% endif %}
+
+                <h2 class="door-open-subtitle mb-4">¡Puerta <span id="door-open-number"></span> Abierta!</h2>
+                <p class="door-open-message mb-4">Retira tu producto de la bandeja</p>
+                
+                <div class="door-open-timer mb-4">
+                    <div class="timer-circle">
+                        <div class="timer-text">
+                            <span id="door-timer-seconds">10</span>
+                            <small>segundos</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="door-open-progress mb-4">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="door-progress-bar"></div>
+                    </div>
+                    <p class="progress-text">Tiempo restante para cerrar la puerta</p>
+                </div>
+                
+                <div class="door-open-footer">
+                    <p>La puerta se cerrará automáticamente</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Aplicación Principal -->
     <div id="main-app" class="container-fluid vh-100 d-flex flex-column" style="display: none;">
         <!-- Header -->
@@ -180,10 +223,25 @@
         </div>
     </div>
 
+    <!-- Overlay de bloqueo para TPV -->
+    <div id="tpv-block-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:20000; cursor:not-allowed;">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+            <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div>
+            <div style="color:#212529;font-size:1.5rem;font-weight:600;">Procesando pago...</div>
+            <div style="color:#6c757d;font-size:1rem;">Por favor espera</div>
+        </div>
+    </div>
+
     <!-- Botón flotante de desarrollo (solo en modo desarrollo) -->
     <button id="dev-gpio-button" class="dev-float-button" style="display: none;" title="Simular botón GPIO Pin 16">
         <i class="bi bi-lightning-fill"></i>
         <div class="tooltip">Simular Pin 16</div>
+    </button>
+
+    <!-- Botón de prueba para salvapantallas de puerta (solo desarrollo) -->
+    <button id="dev-door-test" class="dev-float-button" style="display: none; right: 80px;" title="Probar salvapantallas de puerta">
+        <i class="bi bi-door-open-fill"></i>
+        <div class="tooltip">Test Puerta</div>
     </button>
 
     <!-- Scripts -->
