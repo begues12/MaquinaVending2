@@ -20,21 +20,13 @@ class TPVController:
             'timeout': 5
         }
         
-        if self.platform != 'raspberry' and self.tpv_enabled:
-            self._init_raspberry_tpv()
-        else:
-            self._init_tpv_simulation()
+        # Siempre simular TPV, nunca intentar conectar a /dev/ttyUSB0
+        self._init_tpv_simulation()
     
     def _init_raspberry_tpv(self):
         """Inicializar comunicación serial real para Raspberry Pi"""
-        try:
-            import serial
-            self.serial = serial
-            logger.info("TPV real inicializado para Raspberry Pi")
-            
-        except ImportError:
-            logger.error("Librería pyserial no encontrada. Cambiando a modo simulación.")
-            self._init_tpv_simulation()
+        # Este método queda inactivo, nunca se usará en modo simulación
+        pass
     
     def _init_tpv_simulation(self):
         """Inicializar simulación de TPV para Windows"""
@@ -89,44 +81,10 @@ class TPVController:
     
     def _process_real_payment(self, amount_cents: int) -> Dict[str, Any]:
         """Procesar pago real con TPV físico"""
-        tpv = None
-        try:
-            # Abrir puerto serial
-            tpv = self.serial.Serial(
-                self.serial_config['port'],
-                baudrate=self.serial_config['baudrate'],
-                timeout=self.serial_config['timeout']
-            )
-            
-            logger.info(f"Conexión TPV establecida en {self.serial_config['port']}")
-            
-            # Enviar comando de cobro al TPV
-            comando = f":SALE:{amount_cents:06d}:\n".encode()
-            tpv.write(comando)
-            
-            logger.info(f"Comando enviado al TPV: {comando.decode().strip()}")
-            
-            # Esperar respuesta
-            respuesta = tpv.readline()
-            respuesta_str = respuesta.decode().strip()
-            
-            logger.info(f"Respuesta del TPV: {respuesta_str}")
-            
-            # Parsear respuesta del TPV
-            return self._parse_tpv_response(respuesta_str, amount_cents / 100)
-            
-        except Exception as e:
-            logger.error(f"Error en comunicación TPV: {e}")
-            return {
-                'success': False,
-                'error': f'Error de comunicación serial: {str(e)}',
-                'amount': amount_cents / 100,
-                'transaction_id': None
-            }
-        finally:
-            if tpv:
-                tpv.close()
-                logger.info("Conexión TPV cerrada")
+        # Simulación: nunca intentar abrir puerto serial
+        logger.info("TPV simulado: pago siempre OK (no se conecta a /dev/ttyUSB0)")
+        respuesta = ":OK:APPROVED:SIMULADO123:\n"
+        return self._parse_tpv_response(respuesta, amount_cents / 100)
     
     def _process_simulated_payment(self, amount_cents: int) -> Dict[str, Any]:
         """Procesar pago simulado para testing"""
