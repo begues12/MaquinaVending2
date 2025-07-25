@@ -20,7 +20,7 @@ class TPVController:
             'timeout': 5
         }
         
-        if self.platform == 'raspberry' and self.tpv_enabled:
+        if self.platform != 'raspberry' and self.tpv_enabled:
             self._init_raspberry_tpv()
         else:
             self._init_tpv_simulation()
