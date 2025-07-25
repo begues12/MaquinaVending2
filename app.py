@@ -94,18 +94,22 @@ def process_purchase():
 
         # Procesar pago según método
         payment_result = None
-        if payment_method == 'contactless':
-            # Usar TPV para pago contactless
-            payment_result = tpv_controller.process_contactless_payment(amount)
-        elif payment_method == 'usb':
-            # Simulación: pago por USB siempre OK
-            # NO intentar conectar a /dev/ttyUSB0 ni ningún dispositivo físico
-            payment_result = {
+        payment_result = {
                 'success': True,
                 'payment_id': 'USB_SIMULADO_OK'
             }
-        else:
-            return jsonify({'success': False, 'error': 'Método de pago no soportado'}), 400
+        # if payment_method == 'contactless':
+        #     # Usar TPV para pago contactless
+        #     payment_result = tpv_controller.process_contactless_payment(amount)
+        # elif payment_method == 'usb':
+        #     # Simulación: pago por USB siempre OK
+        #     # NO intentar conectar a /dev/ttyUSB0 ni ningún dispositivo físico
+        #     payment_result = {
+        #         'success': True,
+        #         'payment_id': 'USB_SIMULADO_OK'
+        #     }
+        # else:
+        #     return jsonify({'success': False, 'error': 'Método de pago no soportado'}), 400
 
         if not payment_result or not payment_result.get('success'):
             return jsonify({
