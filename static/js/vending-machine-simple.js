@@ -23,6 +23,7 @@ class VendingMachineSimple {
         this.setupEventListeners();
         this.updateSystemStatus();
         this.startScreensaverTimer();
+        this.startRedirectMonitoring();
     }
 
     setupScreensaver() {
@@ -43,24 +44,49 @@ class VendingMachineSimple {
         // Eliminar selector anterior si existe
         this.hideLanguageSelector();
         
+        // Detectar si el salvapantallas está en modo oscuro
+        const isDarkTheme = this.config.machine?.screensaver?.background_style === 'dark';
+        
         this.languageSelector = document.createElement('div');
         this.languageSelector.id = 'language-selector';
-        this.languageSelector.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            z-index: 20000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            color: white;
-            animation: fadeIn 0.3s ease-out;
-        `;
+        
+        if (isDarkTheme) {
+            this.languageSelector.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(45deg, #0f0f23, #1a1a2e, #16213e);
+                background-size: 400% 400%;
+                animation: gradientShift 15s ease infinite, fadeIn 0.3s ease-out;
+                z-index: 20000;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                color: white;
+            `;
+        } else {
+            this.languageSelector.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(45deg, #f8f9fa, #e9ecef, #dee2e6, #ced4da);
+                background-size: 400% 400%;
+                animation: gradientShift 15s ease infinite, fadeIn 0.3s ease-out;
+                z-index: 20000;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                color: #343a40;
+            `;
+        }
         
         this.languageSelector.innerHTML = `
             <style>
@@ -68,11 +94,24 @@ class VendingMachineSimple {
                     from { opacity: 0; transform: scale(0.9); }
                     to { opacity: 1; transform: scale(1); }
                 }
+                @keyframes gradientShift {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
                 .language-btn {
-                    background: rgba(255, 255, 255, 0.2);
-                    border: 2px solid rgba(255, 255, 255, 0.3);
+                    ${isDarkTheme ? `
+                        background: rgba(255, 255, 255, 0.2);
+                        border: 2px solid rgba(0, 212, 255, 0.6);
+                        color: white;
+                        box-shadow: 0 8px 32px rgba(0, 212, 255, 0.2);
+                    ` : `
+                        background: rgba(255, 255, 255, 0.8);
+                        border: 2px solid #007bff;
+                        color: #495057;
+                        box-shadow: 0 8px 32px rgba(0, 123, 255, 0.2);
+                    `}
                     border-radius: 20px;
-                    color: white;
                     font-size: 24px;
                     font-weight: 600;
                     padding: 20px 40px;
@@ -81,17 +120,23 @@ class VendingMachineSimple {
                     cursor: pointer;
                     transition: all 0.3s ease;
                     backdrop-filter: blur(10px);
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     gap: 15px;
                 }
                 .language-btn:hover {
-                    background: rgba(255, 255, 255, 0.3);
-                    border-color: rgba(255, 255, 255, 0.6);
+                    ${isDarkTheme ? `
+                        background: rgba(0, 212, 255, 0.3);
+                        border-color: #00d4ff;
+                        box-shadow: 0 12px 40px rgba(0, 212, 255, 0.4);
+                    ` : `
+                        background: #007bff;
+                        color: white;
+                        border-color: #0056b3;
+                        box-shadow: 0 12px 40px rgba(0, 123, 255, 0.4);
+                    `}
                     transform: translateY(-5px);
-                    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
                 }
                 .language-btn:active {
                     transform: translateY(-2px);
@@ -104,14 +149,25 @@ class VendingMachineSimple {
                     font-size: 48px;
                     font-weight: 700;
                     margin-bottom: 20px;
-                    text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                    ${isDarkTheme ? `
+                        text-shadow: 0 4px 8px rgba(0, 212, 255, 0.5);
+                        color: white;
+                    ` : `
+                        text-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+                        color: #495057;
+                    `}
                 }
                 .language-subtitle {
                     font-size: 18px;
-                    opacity: 0.9;
+                    opacity: 0.8;
                     margin-bottom: 40px;
                     text-align: center;
                     max-width: 500px;
+                    ${isDarkTheme ? `
+                        color: rgba(255, 255, 255, 0.8);
+                    ` : `
+                        color: #6c757d;
+                    `}
                 }
             </style>
             <div class="language-title">🌍 Selecciona tu idioma</div>
@@ -134,7 +190,7 @@ class VendingMachineSimple {
                 </button>
             </div>
             
-            <div style="position: absolute; bottom: 30px; font-size: 14px; opacity: 0.7;">
+            <div style="position: absolute; bottom: 30px; font-size: 14px; opacity: 0.7; color: ${isDarkTheme ? 'rgba(255, 255, 255, 0.7)' : '#6c757d'};">
                 Toca fuera para cancelar • Touch outside to cancel • Toca fora per cancel·lar
             </div>
         `;
@@ -170,15 +226,16 @@ class VendingMachineSimple {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(40, 167, 69, 0.95);
-            color: white;
+            background: rgba(255, 255, 255, 0.95);
+            color: #28a745;
+            border: 2px solid #28a745;
             padding: 30px 50px;
             border-radius: 20px;
             font-size: 24px;
             font-weight: 600;
             z-index: 25000;
             text-align: center;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            box-shadow: 0 15px 35px rgba(40, 167, 69, 0.3);
             backdrop-filter: blur(15px);
         `;
         
@@ -295,25 +352,54 @@ class VendingMachineSimple {
         const grid = document.getElementById('doors-grid');
         grid.innerHTML = '';
 
-        // Obtener todas las puertas disponibles dinámicamente
-        const doorIds = Object.keys(this.doorsData);
+        // Obtener configuración de la grid desde config
+        const gridConfig = this.config.display_grid || {
+            max_rows: 3,
+            max_cols: 5,
+            show_empty_spaces: true,
+            empty_space_text: "Próximamente"
+        };
+
+        // Configurar CSS Grid
+        grid.style.gridTemplateColumns = `repeat(${gridConfig.max_cols}, 1fr)`;
+        grid.style.gridTemplateRows = `repeat(${gridConfig.max_rows}, 1fr)`;
+        grid.style.gap = '15px';
+        grid.style.padding = '20px';
+
+        // Crear matriz de posiciones
+        const positionMatrix = {};
         
-        // Calcular el número de columnas basado en la cantidad de puertas
-        let columns = 3; // Por defecto 3 columnas
-        if (doorIds.length <= 4) columns = 2;
-        if (doorIds.length <= 2) columns = 1;
-        if (doorIds.length > 9) columns = 4;
-        if (doorIds.length > 12) columns = 5;
-        
-        // Aplicar grid dinámico
-        grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
-        
-        // Generar puertas en orden
-        doorIds.sort().forEach(doorId => {
-            const door = this.doorsData[doorId];
-            const doorSquare = this.createDoorSquare(doorId, door);
-            grid.appendChild(doorSquare);
+        // Llenar matriz con puertas configuradas
+        Object.values(this.doorsData).forEach(door => {
+            if (door.position && door.position.row && door.position.col) {
+                const key = `${door.position.row}-${door.position.col}`;
+                positionMatrix[key] = door;
+            }
         });
+
+        // Generar grid completa
+        for (let row = 1; row <= gridConfig.max_rows; row++) {
+            for (let col = 1; col <= gridConfig.max_cols; col++) {
+                const key = `${row}-${col}`;
+                const door = positionMatrix[key];
+                
+                if (door) {
+                    // Crear puerta real
+                    const doorSquare = this.createDoorSquare(door.id, door);
+                    doorSquare.style.gridRow = row;
+                    doorSquare.style.gridColumn = col;
+                    grid.appendChild(doorSquare);
+                } else {
+                    // Crear espacio vacío simple
+                    const emptySquare = document.createElement('div');
+                    emptySquare.className = 'door-square empty-space';
+                    emptySquare.style.gridRow = row;
+                    emptySquare.style.gridColumn = col;
+                    emptySquare.innerHTML = ''; // Completamente vacío
+                    grid.appendChild(emptySquare);
+                }
+            }
+        }
     }
 
     createDoorSquare(doorId, doorData) {
@@ -335,8 +421,11 @@ class VendingMachineSimple {
         
         square.classList.add(status);
         
+        // Usar display_name como texto principal
+        const displayName = doorData.display_name || doorId;
+        
         square.innerHTML = `
-            <div class="door-number">${doorId}</div>
+            <div class="door-number">${displayName}</div>
             <div class="door-status">${statusText}</div>
         `;
         
@@ -1014,10 +1103,148 @@ class VendingMachineSimple {
         }, 2000);
     }
 
+    // Monitorear redirecciones desde botón GPIO
+    startRedirectMonitoring() {
+        console.log('Iniciando monitoreo de redirecciones GPIO...');
+        
+        // Verificar cada 2 segundos si hay una solicitud de redirección
+        setInterval(async () => {
+            try {
+                const response = await fetch('/api/restock/redirect-status');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Debug temporal
+                    if (data.redirect_requested) {
+                        console.log('Estado de redirección:', data);
+                    }
+                    
+                    if (data.redirect_requested && data.success) {
+                        console.log('Redirección solicitada por botón GPIO, dirigiendo a restock...');
+                        
+                        // Limpiar la solicitud de redirección
+                        await fetch('/api/restock/clear-redirect', { method: 'POST' });
+                        
+                        // Redirigir a la página de restock
+                        window.location.href = '/restock';
+                    }
+                }
+            } catch (error) {
+                console.error('Error verificando redirección GPIO:', error);
+            }
+        }, 2000);
+    }
+
+    // Inicializar botón flotante de desarrollo
+    async initDevelopmentButton() {
+        try {
+            // Verificar si estamos en modo desarrollo
+            const response = await fetch('/api/config/development');
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.development_mode) {
+                    const devButton = document.getElementById('dev-gpio-button');
+                    if (devButton) {
+                        devButton.style.display = 'flex';
+                        devButton.addEventListener('click', this.simulateGpioButton.bind(this));
+                        console.log('Botón de desarrollo GPIO activado');
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error inicializando botón de desarrollo:', error);
+        }
+    }
+
+    // Simular presión del botón GPIO
+    async simulateGpioButton() {
+        const button = document.getElementById('dev-gpio-button');
+        
+        try {
+            // Efecto visual de presión
+            button.classList.add('pressed');
+            
+            // Llamar al endpoint de simulación
+            const response = await fetch('/api/test/gpio-button', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Botón GPIO Pin 16 simulado:', data.message);
+                
+                // Mostrar notificación temporal con número de pin
+                this.showDevNotification('GPIO Pin 16 simulado!', 'success');
+            } else {
+                const error = await response.json();
+                console.error('Error simulando GPIO Pin 16:', error.error);
+                this.showDevNotification('Error al simular Pin 16', 'error');
+            }
+            
+        } catch (error) {
+            console.error('Error en simulación de GPIO Pin 16:', error);
+            this.showDevNotification('Error de conexión', 'error');
+        } finally {
+            // Quitar efecto visual después de 500ms
+            setTimeout(() => {
+                button.classList.remove('pressed');
+            }, 500);
+        }
+    }
+
+    // Mostrar notificación de desarrollo
+    showDevNotification(message, type = 'info') {
+        // Crear notificación temporal
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#007bff'};
+            color: white;
+            border-radius: 4px;
+            z-index: 1001;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+            transform: translateX(400px);
+        `;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        // Animar entrada
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 10);
+        
+        // Quitar después de 3 segundos
+        setTimeout(() => {
+            notification.style.transform = 'translateX(400px)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
+    }
+
 }
 
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
     window.vendingMachine = new VendingMachineSimple();
-    console.log('Sistema de máquina expendedora simple inicializado');
+    
+    // Iniciar monitoreo de botón GPIO para redirección
+    window.vendingMachine.startRedirectMonitoring();
+    
+    // Inicializar botón de desarrollo si estamos en modo desarrollo
+    window.vendingMachine.initDevelopmentButton();
+    
+    console.log('Sistema de máquina expendedora simple inicializado con monitoreo GPIO');
 });

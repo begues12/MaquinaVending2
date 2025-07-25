@@ -1,15 +1,34 @@
 {
   "machine": {
-    "name": "Floradomicilio.com",
+    "name": "floristeriaraquel.com",
     "model": "VEND-FLWR-2025",
-    "screensaver_timeout": 10,
+    "screensaver_timeout": 40,
     "screensaver_text": "Presiona cualquier lugar para comenzar",
     "currency": "EUR",
     "language": "es",
+    "door_settings": {
+      "default_open_time": 3.0,
+      "min_open_time": 1.0,
+      "max_open_time": 30.0,
+      "allow_per_door_timing": true
+    },
+    "screensaver": {
+      "logo_enabled": true,
+      "logo_path": "static/images/logo.webp",
+      "background_style": "light",
+      "show_machine_name": true,
+      "show_pulse_animation": true
+    },
+    "display_grid": {
+      "max_rows": 3,
+      "max_cols": 5,
+      "show_empty_spaces": true,
+      "empty_space_text": "Próximamente"
+    },
     "restock_mode": {
-      "enabled": true,
+      "enabled": false,
       "gpio_pin": 16,
-      "activated_at": "2025-07-24T22:11:28.603549",
+      "activated_at": null,
       "secret_sequence": {
         "enabled": true,
         "sequence": [
@@ -28,129 +47,213 @@
   "doors": {
     "A1": {
       "id": "A1",
+      "display_name": "1",
+      "position": {
+        "row": 1,
+        "col": 1
+      },
       "gpio_pin": 18,
       "sensor_pin": 17,
       "relay_matrix": false,
       "relay_index": 0,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 3.0
     },
     "A2": {
       "id": "A2",
+      "display_name": "2",
+      "position": {
+        "row": 2,
+        "col": 1
+      },
       "gpio_pin": 18,
       "sensor_pin": 18,
       "relay_matrix": true,
       "relay_index": 1,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 3.0
     },
     "B1": {
       "id": "B1",
+      "display_name": "3",
+      "position": {
+        "row": 3,
+        "col": 1
+      },
       "gpio_pin": 18,
       "sensor_pin": 19,
       "relay_matrix": true,
       "relay_index": 2,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 3.0
     },
     "B2": {
       "id": "B2",
+      "display_name": "4",
+      "position": {
+        "row": 1,
+        "col": 2
+      },
       "gpio_pin": 18,
       "sensor_pin": 20,
       "relay_matrix": true,
       "relay_index": 3,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 3.0
     },
     "C1": {
       "id": "C1",
+      "display_name": "5",
+      "position": {
+        "row": 2,
+        "col": 2
+      },
       "gpio_pin": 18,
       "sensor_pin": 21,
       "relay_matrix": true,
       "relay_index": 4,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 30.0
     },
     "C2": {
       "id": "C2",
+      "display_name": "6",
+      "position": {
+        "row": 3,
+        "col": 2
+      },
       "gpio_pin": 18,
       "sensor_pin": 22,
       "relay_matrix": true,
       "relay_index": 1,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 30.0
     },
     "D1": {
       "id": "D1",
+      "display_name": "7",
+      "position": {
+        "row": 1,
+        "col": 3
+      },
       "gpio_pin": 18,
       "sensor_pin": 23,
       "relay_matrix": true,
       "relay_index": 2,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 30.0
     },
     "D2": {
       "id": "D2",
+      "display_name": "8",
+      "position": {
+        "row": 3,
+        "col": 3
+      },
       "gpio_pin": 26,
       "sensor_pin": 24,
       "relay_matrix": true,
       "relay_index": 1,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 30.0
     },
     "E1": {
       "id": "E1",
+      "display_name": "9",
+      "position": {
+        "row": 1,
+        "col": 4
+      },
       "gpio_pin": 27,
       "sensor_pin": 25,
       "relay_matrix": false,
       "relay_index": 0,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 30.0
     },
     "E2": {
       "id": "E2",
+      "display_name": "10",
+      "position": {
+        "row": 2,
+        "col": 4
+      },
       "gpio_pin": 27,
       "sensor_pin": 26,
       "relay_matrix": true,
       "relay_index": 1,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 30.0
     },
     "F1": {
       "id": "F1",
+      "display_name": "11",
+      "position": {
+        "row": 3,
+        "col": 4
+      },
       "gpio_pin": 29,
       "sensor_pin": 27,
       "relay_matrix": false,
       "relay_index": 0,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 30.0
     },
     "F2": {
       "id": "F2",
+      "display_name": "12",
+      "position": {
+        "row": 1,
+        "col": 5
+      },
       "gpio_pin": 29,
       "sensor_pin": 28,
       "relay_matrix": true,
       "relay_index": 1,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 30.0
     },
     "G1": {
       "id": "G1",
+      "display_name": "13",
+      "position": {
+        "row": 2,
+        "col": 5
+      },
       "gpio_pin": 31,
       "sensor_pin": 29,
       "relay_matrix": false,
       "relay_index": 0,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 30.0
     },
     "G2": {
       "id": "G2",
+      "display_name": "14",
+      "position": {
+        "row": 3,
+        "col": 5
+      },
       "gpio_pin": 31,
       "sensor_pin": 30,
       "relay_matrix": true,
       "relay_index": 1,
       "door_open": false,
-      "last_maintenance": null
+      "last_maintenance": null,
+      "open_time": 30.0
     }
   },
   "payment_methods": {

@@ -50,6 +50,10 @@ class RestockController:
         self.sequence_start_time = None
         self.failed_attempts = 0
         
+        # Estado de redirección
+        self.redirect_requested = False
+        self.redirect_timestamp = None
+        
         if not self.is_windows:
             try:
                 import RPi.GPIO as GPIO
@@ -91,6 +95,11 @@ class RestockController:
         """Callback cuando se presiona el botón de reposición"""
         logger.info("Botón de reposición presionado")
         self.toggle_restock_mode()
+        
+        # Solicitar redirección al panel de restock
+        self.redirect_requested = True
+        self.redirect_timestamp = datetime.now().isoformat()
+        logger.info("Redirección al panel de restock solicitada")
     
     def toggle_restock_mode(self) -> bool:
         """Alternar modo reposición"""
@@ -146,10 +155,16 @@ class RestockController:
         return True
     
     def simulate_button_press(self) -> bool:
-        """Simular presión del botón (para Windows/testing)"""
-        logger.info("Simulando presión del botón de reposición")
-        self.toggle_restock_mode()
-        return self.restock_mode
+        """Simular presión del botón GPIO pin 16 (para Windows/testing)"""
+        logger.info(f"Simulando presión del botón GPIO pin {self.restock_pin}")
+        
+        # Simular la misma lógica que el callback del botón físico
+        # Activar la bandera de redirección directamente
+        self.redirect_requested = True
+        self.redirect_timestamp = time.time()
+        
+        logger.info(f"GPIO pin {self.restock_pin} simulado - Redirección activada")
+        return True
     
     def get_restock_status(self) -> Dict:
         """Obtener estado del modo reposición"""
@@ -519,6 +534,24 @@ class RestockController:
             'timeout': self.sequence_timeout,
             'time_remaining': max(0, self.sequence_timeout - (time.time() - self.sequence_start_time)) if self.sequence_start_time else self.sequence_timeout
         }
+    
+    def is_redirect_requested(self) -> Dict[str, Any]:
+        """Verificar si se ha solicitado una redirección al panel de restock"""
+        return {
+            'redirect_requested': self.redirect_requested,
+            'redirect_timestamp': self.redirect_timestamp
+        }
+    
+    def clear_redirect_request(self) -> bool:
+        """Limpiar la solicitud de redirección"""
+        try:
+            self.redirect_requested = False
+            self.redirect_timestamp = None
+            logger.info("Solicitud de redirección limpiada")
+            return True
+        except Exception as e:
+            logger.error(f"Error al limpiar solicitud de redirección: {e}")
+            return False
     
     def cleanup(self):
         """Limpiar recursos GPIO al cerrar"""

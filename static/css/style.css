@@ -27,7 +27,7 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: linear-gradient(45deg, #0f0f23, #1a1a2e, #16213e);
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef, #dee2e6, #ced4da);
     background-size: 400% 400%;
     animation: gradientShift 15s ease infinite;
     display: flex;
@@ -37,24 +37,49 @@ body {
     cursor: pointer;
 }
 
+.screensaver-overlay.dark-theme {
+    background: linear-gradient(45deg, #0f0f23, #1a1a2e, #16213e);
+}
+
 .screensaver-content {
     text-align: center;
+    color: #495057;
+    animation: float 6s ease-in-out infinite;
+}
+
+.screensaver-overlay.dark-theme .screensaver-content {
     color: white;
+}
+
+.screensaver-logo {
+    max-width: 250px;
+    max-height: 250px;
+    margin-bottom: 2rem;
     animation: float 6s ease-in-out infinite;
 }
 
 .screensaver-icon {
     font-size: 8rem;
-    color: #00d4ff;
+    color: #007bff;
     animation: pulse 2s infinite, rotate 20s linear infinite;
     display: block;
     margin-bottom: 2rem;
 }
 
+.screensaver-overlay.dark-theme .screensaver-icon {
+    color: #00d4ff;
+}
+
 .screensaver-title {
-    font-size: 3rem;
+    font-size: 2rem;
     font-weight: 300;
     margin-bottom: 1rem;
+    text-shadow: 0 0 20px rgba(0, 123, 255, 0.3);
+    color: #343a40;
+}
+
+.screensaver-overlay.dark-theme .screensaver-title {
+    color: white;
     text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
 }
 
@@ -63,15 +88,24 @@ body {
     opacity: 0.8;
     margin-bottom: 3rem;
     animation: blink 3s infinite;
+    color: #6c757d;
+}
+
+.screensaver-overlay.dark-theme .screensaver-subtitle {
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .screensaver-pulse {
     width: 200px;
     height: 200px;
-    border: 2px solid rgba(0, 212, 255, 0.3);
+    border: 2px solid rgba(0, 123, 255, 0.3);
     border-radius: 50%;
     margin: 0 auto;
     animation: ripple 3s infinite;
+}
+
+.screensaver-overlay.dark-theme .screensaver-pulse {
+    border: 2px solid rgba(0, 212, 255, 0.3);
 }
 
 @keyframes gradientShift {
@@ -836,4 +870,87 @@ header {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #0056b3;
+}
+
+/* === ESPACIOS VACÍOS EN GRID === */
+.door-square.empty-space {
+    background: transparent;
+    border: 2px dashed #adb5bd;
+    opacity: 0.3;
+    cursor: default;
+}
+
+.door-square.empty-space:hover {
+    transform: none;
+    box-shadow: none;
+    opacity: 0.3;
+}
+
+/* === BOTÓN FLOTANTE DE DESARROLLO === */
+.dev-float-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #ff6b35, #ff8e53);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 4px 20px rgba(255, 107, 53, 0.4);
+    cursor: pointer;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: all 0.3s ease;
+    animation: pulse-dev 2s infinite;
+}
+
+.dev-float-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(255, 107, 53, 0.6);
+}
+
+.dev-float-button:active {
+    transform: scale(0.95);
+}
+
+.dev-float-button.pressed {
+    animation: pressed-flash 0.5s ease;
+}
+
+@keyframes pulse-dev {
+    0%, 100% {
+        box-shadow: 0 4px 20px rgba(255, 107, 53, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 30px rgba(255, 107, 53, 0.8);
+    }
+}
+
+@keyframes pressed-flash {
+    0% { background: linear-gradient(135deg, #ff6b35, #ff8e53); }
+    50% { background: linear-gradient(135deg, #28a745, #34ce57); }
+    100% { background: linear-gradient(135deg, #ff6b35, #ff8e53); }
+}
+
+.dev-float-button .tooltip {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.dev-float-button:hover .tooltip {
+    opacity: 1;
 }

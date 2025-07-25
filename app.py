@@ -230,6 +230,25 @@ def simulate_restock_button():
         'message': 'Botón de reposición simulado'
     })
 
+@app.route('/api/restock/redirect-status', methods=['GET'])
+def get_restock_redirect_status():
+    """Verificar si se ha solicitado redirección al panel de restock"""
+    redirect_info = restock_controller.is_redirect_requested()
+    return jsonify({
+        'success': True,
+        'redirect_requested': redirect_info['redirect_requested'],
+        'redirect_timestamp': redirect_info['redirect_timestamp']
+    })
+
+@app.route('/api/restock/clear-redirect', methods=['POST'])
+def clear_restock_redirect():
+    """Limpiar solicitud de redirección al panel de restock"""
+    success = restock_controller.clear_redirect_request()
+    return jsonify({
+        'success': success,
+        'message': 'Solicitud de redirección limpiada' if success else 'Error al limpiar redirección'
+    })
+
 @app.route('/api/restock/door/<door_id>', methods=['POST'])
 def restock_door_endpoint(door_id):
     """Reabastecer una puerta (solo en modo reposición)"""
@@ -306,6 +325,36 @@ def test_dispense(door_id):
     except Exception as e:
         logger.error(f"Error en test dispensado: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/test/gpio-button', methods=['POST'])
+def test_gpio_button():
+    """Simular presión del botón GPIO Pin 16 (solo en modo desarrollo)"""
+    try:
+        # Solo permitir en modo desarrollo
+        if Config.FLASK_ENV != 'development':
+            return jsonify({'success': False, 'error': 'Solo disponible en modo desarrollo'}), 403
+        
+        # Simular la presión del botón GPIO Pin 16
+        restock_controller.simulate_button_press()
+        logger.info("Botón GPIO Pin 16 simulado desde interfaz de desarrollo")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Botón GPIO Pin 16 simulado correctamente'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error simulando botón GPIO Pin 16: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/config/development')
+def get_development_config():
+    """Obtener configuración de modo desarrollo"""
+    return jsonify({
+        'success': True,
+        'development_mode': Config.FLASK_ENV == 'development',
+        'debug_mode': Config.FLASK_DEBUG
+    })
 
 # Rutas de información y estadísticas
 @app.route('/api/sales/today')
@@ -695,6 +744,141 @@ def emergency_stop_hardware():
             'error': str(e)
         }), 500
 
+# Rutas para gestión de tiempos de apertura de puertas
+@app.route('/api/door/<door_id>/open-time', methods=['GET'])
+def get_door_open_time(door_id):
+    """Obtener el tiempo de apertura configurado para una puerta"""
+    try:
+        open_time = hardware_controller.get_door_open_time(door_id)
+        
+        return jsonify({
+            'success': True,
+            'door_id': door_id,
+            'open_time': open_time
+        })
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo tiempo de apertura para {door_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/door/<door_id>/open-time', methods=['PUT'])
+def set_door_open_time(door_id):
+    """Configurar el tiempo de apertura para una puerta específica"""
+    try:
+        # Verificar modo restock
+        restock_status = restock_controller.get_restock_status()
+        if not restock_status['active']:
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado - modo restock requerido'
+            }), 403
+        
+        data = request.get_json()
+        if not data or 'open_time' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Campo open_time requerido'
+            }), 400
+        
+        open_time = float(data['open_time'])
+        success = hardware_controller.set_door_open_time(door_id, open_time)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Tiempo de apertura configurado a {open_time}s para puerta {door_id}'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Error configurando tiempo de apertura'
+            }), 400
+            
+    except ValueError:
+        return jsonify({
+            'success': False,
+            'error': 'Valor de tiempo inválido'
+        }), 400
+    except Exception as e:
+        logger.error(f"Error configurando tiempo de apertura para {door_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/doors/open-times', methods=['GET'])
+def get_all_door_open_times():
+    """Obtener tiempos de apertura de todas las puertas"""
+    try:
+        door_times = {}
+        for door_id in config_manager.get_door_ids():
+            door_times[door_id] = hardware_controller.get_door_open_time(door_id)
+        
+        # También incluir configuración global
+        config = config_manager.get_config()
+        door_settings = config.get('machine', {}).get('door_settings', {})
+        
+        return jsonify({
+            'success': True,
+            'door_times': door_times,
+            'global_settings': door_settings
+        })
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo tiempos de apertura: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/doors/open-times', methods=['PUT'])
+def set_multiple_door_open_times():
+    """Configurar tiempos de apertura para múltiples puertas"""
+    try:
+        # Verificar modo restock
+        restock_status = restock_controller.get_restock_status()
+        if not restock_status['active']:
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado - modo restock requerido'
+            }), 403
+        
+        data = request.get_json()
+        if not data or 'door_times' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Campo door_times requerido'
+            }), 400
+        
+        results = {}
+        errors = []
+        
+        for door_id, open_time in data['door_times'].items():
+            try:
+                success = hardware_controller.set_door_open_time(door_id, float(open_time))
+                results[door_id] = success
+                if not success:
+                    errors.append(f"Error configurando puerta {door_id}")
+            except Exception as e:
+                results[door_id] = False
+                errors.append(f"Error en puerta {door_id}: {str(e)}")
+        
+        return jsonify({
+            'success': len(errors) == 0,
+            'results': results,
+            'errors': errors
+        })
+        
+    except Exception as e:
+        logger.error(f"Error configurando múltiples tiempos de apertura: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 # Función de compra legacy mantenida para compatibilidad
 def process_purchase_legacy(slot: str, payment_method: str, payment_id: str = None) -> dict:
     """Procesar una compra (función de compatibilidad con sistema anterior)"""
@@ -755,7 +939,7 @@ def start_app():
             width=Config.WINDOW_WIDTH,
             height=Config.WINDOW_HEIGHT,
             resizable=True,
-            fullscreen=True
+            fullscreen=False
         )
         
         logger.info("Iniciando aplicación...")

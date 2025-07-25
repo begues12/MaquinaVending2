@@ -106,6 +106,16 @@
                             💾 Exportar Datos
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="hardware-tab" data-bs-toggle="tab" data-bs-target="#hardware" type="button" role="tab">
+                            🔧 Hardware
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="timing-tab" data-bs-toggle="tab" data-bs-target="#timing" type="button" role="tab">
+                            ⏱️ Configuración de Tiempos
+                        </button>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -318,6 +328,96 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Pestaña de Configuración de Tiempos -->
+            <div class="tab-pane fade" id="timing" role="tabpanel">
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <!-- Configuración Global -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5>⚙️ Configuración Global de Tiempos</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="default-open-time" class="form-label">Tiempo por Defecto (segundos)</label>
+                                        <input type="number" class="form-control" id="default-open-time" 
+                                               step="0.1" min="1.0" max="10.0" value="3.0">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="min-open-time" class="form-label">Tiempo Mínimo (segundos)</label>
+                                        <input type="number" class="form-control" id="min-open-time" 
+                                               step="0.1" min="0.5" max="5.0" value="1.0">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="max-open-time" class="form-label">Tiempo Máximo (segundos)</label>
+                                        <input type="number" class="form-control" id="max-open-time" 
+                                               step="0.1" min="5.0" max="30.0" value="10.0">
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-primary" onclick="saveGlobalTimingSettings()">
+                                        💾 Guardar Configuración Global
+                                    </button>
+                                    <button class="btn btn-secondary ms-2" onclick="loadTimingSettings()">
+                                        🔄 Recargar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Configuración Individual por Puerta -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>🚪 Tiempos Individuales por Puerta</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <p class="text-muted">Configure tiempos específicos para cada puerta. Útil para productos que requieren más tiempo para ser retirados.</p>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <button class="btn btn-success mb-3" onclick="applyDefaultToAll()">
+                                            🔄 Aplicar Tiempo por Defecto a Todas
+                                        </button>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button class="btn btn-info mb-3" onclick="loadTimingSettings()">
+                                            📊 Mostrar Tiempos Actuales
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Tabla de puertas con tiempos -->
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Puerta</th>
+                                                <th>Producto</th>
+                                                <th>Tiempo Actual (s)</th>
+                                                <th>Nuevo Tiempo (s)</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="timing-table-body">
+                                            <!-- Se llenará dinámicamente -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <button class="btn btn-primary" onclick="saveAllDoorTimings()">
+                                        💾 Guardar Todos los Cambios
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -356,6 +456,13 @@
                         <div class="mb-3">
                             <label for="edit-image-url" class="form-label">URL de Imagen</label>
                             <input type="text" class="form-control" id="edit-image-url">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-open-time" class="form-label">Tiempo de Apertura (segundos)</label>
+                            <input type="number" class="form-control" id="edit-open-time" 
+                                   step="0.1" min="1.0" max="10.0" value="3.0">
+                            <div class="form-text">Tiempo que la puerta permanece abierta (1.0 - 10.0 segundos)</div>
                         </div>
                     </form>
                 </div>
@@ -551,7 +658,7 @@
             }
         }
 
-        function editProduct(doorId) {
+        async function editProduct(doorId) {
             if (!restockMode) {
                 alert('Modo reposición no activo');
                 return;
@@ -560,13 +667,27 @@
             const door = doors[doorId];
             const product = door.product;
             
-            // Llenar formulario
+            // Llenar formulario con datos del producto
             document.getElementById('edit-door-id').value = doorId;
             document.getElementById('edit-name').value = product?.name || '';
             document.getElementById('edit-price').value = product?.price || 0;
             document.getElementById('edit-stock').value = product?.stock || 0;
             document.getElementById('edit-description').value = product?.description || '';
             document.getElementById('edit-image-url').value = product?.image_url || '';
+            
+            // Cargar tiempo de apertura actual
+            try {
+                const timeResponse = await fetch(`/api/door/${doorId}/open-time`);
+                const timeData = await timeResponse.json();
+                
+                if (timeData.success) {
+                    document.getElementById('edit-open-time').value = timeData.open_time;
+                }
+            } catch (error) {
+                console.error('Error cargando tiempo de apertura:', error);
+                // Usar valor por defecto si hay error
+                document.getElementById('edit-open-time').value = 3.0;
+            }
             
             // Mostrar modal
             const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
@@ -585,7 +706,10 @@
                 active: true
             };
             
+            const openTime = parseFloat(document.getElementById('edit-open-time').value);
+            
             try {
+                // Guardar datos del producto
                 const response = await fetch(`/api/restock/product/${doorId}`, {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
@@ -595,7 +719,21 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert(`✅ ${data.message}`);
+                    // Guardar tiempo de apertura por separado
+                    const timeResponse = await fetch(`/api/door/${doorId}/open-time`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({open_time: openTime})
+                    });
+                    
+                    const timeData = await timeResponse.json();
+                    
+                    if (timeData.success) {
+                        alert(`✅ Producto y tiempo de apertura guardados correctamente`);
+                    } else {
+                        alert(`✅ Producto guardado. ⚠️ Error configurando tiempo: ${timeData.error}`);
+                    }
+                    
                     loadDoors(); // Recargar datos
                     
                     // Cerrar modal
@@ -1128,6 +1266,237 @@
             }
         }
 
+        // ============ FUNCIONES DE CONFIGURACIÓN DE TIEMPOS ============
+
+        // Cargar configuración de tiempos
+        async function loadTimingSettings() {
+            try {
+                // Cargar configuración global
+                const configResponse = await fetch('/api/config');
+                const configData = await configResponse.json();
+                
+                if (configData.success) {
+                    const doorSettings = configData.config.door_settings || {};
+                    
+                    document.getElementById('default-open-time').value = doorSettings.default_open_time || 3.0;
+                    document.getElementById('min-open-time').value = doorSettings.min_open_time || 1.0;
+                    document.getElementById('max-open-time').value = doorSettings.max_open_time || 10.0;
+                }
+                
+                // Cargar tiempos de todas las puertas
+                const doorsResponse = await fetch('/api/doors/open-times');
+                const doorsData = await doorsResponse.json();
+                
+                if (doorsData.success) {
+                    updateTimingTable(doorsData.door_times);
+                }
+                
+            } catch (error) {
+                console.error('Error cargando configuración de tiempos:', error);
+                alert('❌ Error cargando configuración de tiempos');
+            }
+        }
+
+        // Actualizar tabla de tiempos
+        function updateTimingTable(doorTimes) {
+            const tableBody = document.getElementById('timing-table-body');
+            tableBody.innerHTML = '';
+            
+            Object.entries(doors).forEach(([doorId, door]) => {
+                const currentTime = doorTimes[doorId] || 3.0;
+                const productName = door.product?.name || 'Sin producto';
+                
+                const row = `
+                    <tr>
+                        <td><strong>Puerta ${doorId}</strong></td>
+                        <td>${productName}</td>
+                        <td><span class="badge bg-info">${currentTime}s</span></td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" 
+                                   id="time-input-${doorId}" 
+                                   value="${currentTime}" 
+                                   step="0.1" min="1.0" max="10.0" 
+                                   style="width: 100px;">
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="saveSingleDoorTiming('${doorId}')">
+                                💾 Guardar
+                            </button>
+                            <button class="btn btn-sm btn-secondary ms-1" onclick="testSingleDoor('${doorId}')">
+                                🧪 Probar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // Guardar configuración global de tiempos
+        async function saveGlobalTimingSettings() {
+            const defaultTime = parseFloat(document.getElementById('default-open-time').value);
+            const minTime = parseFloat(document.getElementById('min-open-time').value);
+            const maxTime = parseFloat(document.getElementById('max-open-time').value);
+            
+            if (minTime >= maxTime) {
+                alert('❌ El tiempo mínimo debe ser menor que el máximo');
+                return;
+            }
+            
+            if (defaultTime < minTime || defaultTime > maxTime) {
+                alert('❌ El tiempo por defecto debe estar entre el mínimo y máximo');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/config/door-settings', {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        default_open_time: defaultTime,
+                        min_open_time: minTime,
+                        max_open_time: maxTime
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Configuración global guardada correctamente');
+                    loadTimingSettings(); // Recargar
+                } else {
+                    alert(`❌ Error: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error guardando configuración global:', error);
+                alert('❌ Error de conexión');
+            }
+        }
+
+        // Aplicar tiempo por defecto a todas las puertas
+        async function applyDefaultToAll() {
+            if (!confirm('¿Aplicar el tiempo por defecto a todas las puertas?')) return;
+            
+            const defaultTime = parseFloat(document.getElementById('default-open-time').value);
+            
+            try {
+                const response = await fetch('/api/doors/open-times', {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        default_time: defaultTime,
+                        apply_to_all: true
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ Tiempo ${defaultTime}s aplicado a todas las puertas`);
+                    loadTimingSettings(); // Recargar
+                } else {
+                    alert(`❌ Error: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error aplicando tiempo por defecto:', error);
+                alert('❌ Error de conexión');
+            }
+        }
+
+        // Guardar tiempo de una puerta específica
+        async function saveSingleDoorTiming(doorId) {
+            const newTime = parseFloat(document.getElementById(`time-input-${doorId}`).value);
+            
+            if (newTime < 1.0 || newTime > 10.0) {
+                alert('❌ El tiempo debe estar entre 1.0 y 10.0 segundos');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/door/${doorId}/open-time`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({open_time: newTime})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ Tiempo de puerta ${doorId} actualizado a ${newTime}s`);
+                    loadTimingSettings(); // Recargar
+                } else {
+                    alert(`❌ Error: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error guardando tiempo de puerta:', error);
+                alert('❌ Error de conexión');
+            }
+        }
+
+        // Guardar todos los cambios de tiempo
+        async function saveAllDoorTimings() {
+            const doorTimes = {};
+            let hasChanges = false;
+            
+            Object.keys(doors).forEach(doorId => {
+                const input = document.getElementById(`time-input-${doorId}`);
+                if (input) {
+                    const newTime = parseFloat(input.value);
+                    if (newTime >= 1.0 && newTime <= 10.0) {
+                        doorTimes[doorId] = newTime;
+                        hasChanges = true;
+                    }
+                }
+            });
+            
+            if (!hasChanges) {
+                alert('❌ No hay cambios válidos para guardar');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/doors/open-times', {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({door_times: doorTimes})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ Tiempos actualizados para ${Object.keys(doorTimes).length} puertas`);
+                    loadTimingSettings(); // Recargar
+                } else {
+                    alert(`❌ Error: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error guardando tiempos:', error);
+                alert('❌ Error de conexión');
+            }
+        }
+
+        // Probar una puerta con su tiempo configurado
+        async function testSingleDoor(doorId) {
+            if (!confirm(`¿Probar puerta ${doorId}?`)) return;
+            
+            try {
+                const response = await fetch(`/api/hardware/door/${doorId}/test`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ Puerta ${doorId} probada correctamente (${data.open_time}s)`);
+                } else {
+                    alert(`❌ Error probando puerta ${doorId}: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error probando puerta:', error);
+                alert('❌ Error de conexión');
+            }
+        }
+
         // ============ INICIALIZACIÓN ============
 
         // Inicializar pestañas
@@ -1145,6 +1514,11 @@
             // Cargar hardware cuando se abre la pestaña
             document.getElementById('hardware-tab').addEventListener('shown.bs.tab', function() {
                 refreshHardwareStatus();
+            });
+            
+            // Cargar configuración de tiempos cuando se abre la pestaña
+            document.getElementById('timing-tab').addEventListener('shown.bs.tab', function() {
+                loadTimingSettings();
             });
             
             // Auto-detectar USB cada 5 segundos en la pestaña de exportación

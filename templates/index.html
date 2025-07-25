@@ -10,13 +10,27 @@
 </head>
 <body>
     <!-- Salvapantallas -->
-    <div id="screensaver" class="screensaver-overlay">
+    <div id="screensaver" class="screensaver-overlay {% if config.machine.screensaver.background_style == 'dark' %}dark-theme{% endif %}">
         <div class="screensaver-content">
             <div class="screensaver-animation">
-                <i class="bi bi-flower3 screensaver-icon"></i>
-                <h1 class="screensaver-title">Floradomicilio.com</h1>
+                {% if config.machine.screensaver.logo_enabled and config.machine.screensaver.logo_path %}
+                    <img src="{{ url_for('static', filename=config.machine.screensaver.logo_path.replace('static/', '')) }}" 
+                         alt="Logo" class="screensaver-logo" 
+                         onerror="this.style.display='none'; document.querySelector('.screensaver-icon').style.display='block';">
+                    <i class="bi bi-flower3 screensaver-icon" style="display: none;"></i>
+                {% else %}
+                    <i class="bi bi-flower3 screensaver-icon"></i>
+                {% endif %}
+                
+                {% if config.machine.screensaver.show_machine_name %}
+                    <h1 class="screensaver-title">{{ config.machine.name }}</h1>
+                {% endif %}
+                
                 <p class="screensaver-subtitle">{{ config.machine.screensaver_text or 'Presiona cualquier lugar para comenzar' }}</p>
-                <div class="screensaver-pulse"></div>
+                
+                {% if config.machine.screensaver.show_pulse_animation %}
+                    <div class="screensaver-pulse"></div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -88,7 +102,7 @@
                             <i class="bi bi-x-circle"></i> Cancelar
                         </button>
                         <button type="button" class="btn btn-primary btn-lg" id="modal-continue-purchase">
-                            <i class="bi bi-wifi"></i> Pagar Contactless
+                            <i class="bi bi-wifi"></i> Confirmar Compra
                         </button>
                     </div>
                 </div>
@@ -165,6 +179,12 @@
             </div>
         </div>
     </div>
+
+    <!-- Botón flotante de desarrollo (solo en modo desarrollo) -->
+    <button id="dev-gpio-button" class="dev-float-button" style="display: none;" title="Simular botón GPIO Pin 16">
+        <i class="bi bi-lightning-fill"></i>
+        <div class="tooltip">Simular Pin 16</div>
+    </button>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

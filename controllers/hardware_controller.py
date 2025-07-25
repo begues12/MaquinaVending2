@@ -83,8 +83,8 @@ class HardwareController:
         self.door_timers = {}
         self.door_callbacks = {}
         
-        # Configuración de relés
-        self.relay_duration = 3.0  # Segundos que el relé permanece activo
+        # Configuración de relés (valor por defecto, se puede sobrescribir por puerta)
+        self.default_relay_duration = 3.0  # Segundos por defecto
         self.sensor_debounce = 200  # Milisegundos de rebote para sensores
         
         # Estado de inicialización
@@ -206,6 +206,72 @@ class HardwareController:
         except Exception as e:
             self.logger.error(f"Error en callback de sensor {door_id}: {e}")
     
+    def get_door_open_time(self, door_id: str) -> float:
+        """
+        Obtener el tiempo de apertura configurado para una puerta específica
+        
+        Args:
+            door_id: ID de la puerta
+            
+        Returns:
+            float: Tiempo en segundos que la puerta debe permanecer abierta
+        """
+        doors_config = self.config.get('doors', {})
+        door_info = doors_config.get(door_id, {})
+        
+        # Prioridad: tiempo específico de puerta > configuración global > valor por defecto
+        door_time = door_info.get('open_time')
+        if door_time is not None:
+            return float(door_time)
+        
+        # Si no hay tiempo específico, usar configuración global
+        machine_config = self.config.get('machine', {})
+        door_settings = machine_config.get('door_settings', {})
+        global_time = door_settings.get('default_open_time')
+        if global_time is not None:
+            return float(global_time)
+        
+        # Valor por defecto
+        return self.default_relay_duration
+    
+    def set_door_open_time(self, door_id: str, open_time: float) -> bool:
+        """
+        Configurar el tiempo de apertura para una puerta específica
+        
+        Args:
+            door_id: ID de la puerta
+            open_time: Tiempo en segundos (debe estar entre min_open_time y max_open_time)
+            
+        Returns:
+            bool: True si se configuró correctamente
+        """
+        try:
+            # Validar límites
+            machine_config = self.config.get('machine', {})
+            door_settings = machine_config.get('door_settings', {})
+            min_time = door_settings.get('min_open_time', 1.0)
+            max_time = door_settings.get('max_open_time', 10.0)
+            
+            if not (min_time <= open_time <= max_time):
+                self.logger.error(f"Tiempo de apertura {open_time}s fuera del rango permitido ({min_time}-{max_time}s)")
+                return False
+            
+            # Actualizar configuración
+            doors_config = self.config.get('doors', {})
+            if door_id not in doors_config:
+                self.logger.error(f"Puerta {door_id} no encontrada")
+                return False
+            
+            doors_config[door_id]['open_time'] = float(open_time)
+            self._save_config()
+            
+            self.logger.info(f"Tiempo de apertura para puerta {door_id} configurado a {open_time}s")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error configurando tiempo de apertura para {door_id}: {e}")
+            return False
+
     def open_door(self, door_id: str) -> bool:
         """
         Activar relé para abrir una puerta específica
@@ -266,12 +332,15 @@ class HardwareController:
             self.door_states[door_id]['relay_active'] = True
             self.door_states[door_id]['last_opened'] = time.time()
             
-            # Programar desactivación del relé
-            timer = threading.Timer(self.relay_duration, self._deactivate_relay, args=[door_id, gpio_pin, relay_index, relay_matrix])
+            # Obtener tiempo de apertura específico para esta puerta
+            door_open_time = self.get_door_open_time(door_id)
+            
+            # Programar desactivación del relé con el tiempo específico
+            timer = threading.Timer(door_open_time, self._deactivate_relay, args=[door_id, gpio_pin, relay_index, relay_matrix])
             timer.start()
             self.door_timers[door_id] = timer
             
-            self.logger.info(f"Relé de puerta {door_id} activado exitosamente")
+            self.logger.info(f"Relé de puerta {door_id} activado exitosamente por {door_open_time}s")
             return True
             
         except Exception as e:
