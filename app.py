@@ -939,7 +939,11 @@ def start_app():
             width=Config.WINDOW_WIDTH,
             height=Config.WINDOW_HEIGHT,
             resizable=True,
-            fullscreen=True
+            fullscreen=False,
+            easy_drag=False,
+            frameless=False,
+            # Desactivar aceleración por hardware
+            webview_args=['--disable-gpu', '--disable-software-rasterizer']
         )
         
         logger.info("Iniciando aplicación...")
