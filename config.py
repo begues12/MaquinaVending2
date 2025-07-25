@@ -23,7 +23,7 @@ class Config:
     FULLSCREEN_MODE = False  # Cambiar a True para iniciar en fullscreen
 
     # Configuración del sistema
-    PLATFORM = os.environ.get('PLATFORM', 'windows')
+    PLATFORM = os.environ.get('PLATFORM', 'raspbian')
     GPIO_ENABLED = os.environ.get('GPIO_ENABLED', 'False').lower() == 'true'
     
     # Configuración del servidor

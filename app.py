@@ -955,7 +955,6 @@ def start_app():
 
 if __name__ == '__main__':
     if Config.PLATFORM == 'windows':
-        # En Windows, usar PyWebView
         start_app()
     else:
         # En Raspberry Pi, ejecutar Flask directamente
