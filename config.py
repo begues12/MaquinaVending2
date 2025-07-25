@@ -11,7 +11,7 @@ class Config:
     FLASK_DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
     
     # Base de datos
-    DATABASE_PATH = os.environ.get('DATABASE_PATH') or 'database/vending_machine.db'
+    DATABASE_PATH = 'database/vending_machine.db'
     
     # Configuración de pagos
     STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
@@ -23,7 +23,7 @@ class Config:
     FULLSCREEN_MODE = False  # Cambiar a True para iniciar en fullscreen
 
     # Configuración del sistema
-    PLATFORM = os.environ.get('PLATFORM', 'raspberry')
+    PLATFORM = 'raspberry' # os.environ.get('PLATFORM', 'raspberry')
     GPIO_ENABLED = os.environ.get('GPIO_ENABLED', 'False').lower() == 'true'
     
     # Configuración del servidor
