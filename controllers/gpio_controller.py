@@ -20,10 +20,10 @@ class GPIOController:
         self.pins_status = {}
         self.dispensers = {}
         self.sensors = {}
-        
-        # Inicializar según plataforma
+
+        # Preferir gpiozero en Raspberry Pi
         if self.platform == 'raspberry' and self.gpio_enabled:
-            self._init_raspberry_gpio()
+            self._init_gpiozero()
         else:
             self._init_windows_simulation()
     
@@ -53,39 +53,33 @@ class GPIOController:
             logger.error(f"Error al cargar configuración de puertas: {e}")
             return {}, {}
     
-    def _init_raspberry_gpio(self):
-        """Inicializar GPIO real para Raspberry Pi"""
+    def _init_gpiozero(self):
+        """Inicializar GPIO usando gpiozero para Raspberry Pi"""
         try:
-            import RPi.GPIO as GPIO
             from gpiozero import LED, Button
-            
-            self.GPIO = GPIO
-            self.GPIO.setmode(GPIO.BCM)
-            self.GPIO.setwarnings(False)
-            
+
             # Cargar configuración de puertas
             door_pins, sensor_pins = self._load_door_config()
-            
+
             # Configurar dispensadores
             for door_id, pin in door_pins.items():
                 try:
                     self.dispensers[door_id] = LED(pin)
-                    logger.info(f"Dispensador configurado: {door_id} -> Pin {pin}")
+                    logger.info(f"Dispensador gpiozero configurado: {door_id} -> Pin {pin}")
                 except Exception as e:
                     logger.error(f"Error al configurar dispensador {door_id} en pin {pin}: {e}")
-            
+
             # Configurar sensores
             for door_id, pin in sensor_pins.items():
                 try:
                     self.sensors[door_id] = Button(pin)
-                    logger.info(f"Sensor configurado: {door_id} -> Pin {pin}")
+                    logger.info(f"Sensor gpiozero configurado: {door_id} -> Pin {pin}")
                 except Exception as e:
                     logger.error(f"Error al configurar sensor {door_id} en pin {pin}: {e}")
-            
-            logger.info("GPIO de Raspberry Pi inicializado correctamente")
-            
+
+            logger.info("GPIO (gpiozero) inicializado correctamente")
         except ImportError:
-            logger.error("Librerías GPIO no encontradas. Cambiando a modo simulación.")
+            logger.error("Librería gpiozero no encontrada. Cambiando a modo simulación.")
             self._init_windows_simulation()
     
     def _init_windows_simulation(self):
@@ -107,10 +101,8 @@ class GPIOController:
     
     def dispense_product(self, door_id: str) -> bool:
         """Dispensar producto de una puerta específica
-        
         Args:
             door_id: Identificador de la puerta (ej: 'A1', 'B2')
-            
         Returns:
             bool: True si el dispensado fue exitoso
         """
@@ -120,31 +112,29 @@ class GPIOController:
                 # En modo simulación, consideramos exitoso aunque no esté configurado
                 logger.info(f"Dispensador simulado para puerta: {door_id} (no configurado específicamente)")
                 return True
-            
+
             dispenser = self.dispensers[door_id]
-            
+
             if self.platform == 'raspberry' and self.gpio_enabled:
-                # Activar motor del dispensador en Raspberry Pi
+                # Activar motor del dispensador en Raspberry Pi usando gpiozero
                 dispenser.on()
                 time.sleep(0.5)  # Tiempo para dispensar
                 dispenser.off()
             else:
                 # Simulación en Windows
                 dispenser.activate()
-            
+
             logger.info(f"Producto dispensado de la puerta: {door_id}")
             return True
-                
+
         except Exception as e:
             logger.error(f"Error al dispensar producto de la puerta {door_id}: {e}")
             return False
     
     def read_sensor(self, door_id: str) -> bool:
         """Leer estado de un sensor de puerta
-        
         Args:
             door_id: Identificador de la puerta
-            
         Returns:
             bool: Estado del sensor (True = activado)
         """
@@ -152,15 +142,15 @@ class GPIOController:
             if door_id not in self.sensors:
                 logger.warning(f"Sensor no encontrado para puerta: {door_id}")
                 return False
-            
+
             sensor = self.sensors[door_id]
-            
+
             if self.platform == 'raspberry' and self.gpio_enabled:
                 return sensor.is_pressed
             else:
                 # Simulación
                 return sensor.read()
-                
+
         except Exception as e:
             logger.error(f"Error al leer sensor de puerta {door_id}: {e}")
             return False
@@ -195,16 +185,16 @@ class GPIOController:
         """Limpiar recursos GPIO al finalizar"""
         if self.platform == 'raspberry' and self.gpio_enabled:
             try:
-                # Cerrar todos los dispositivos GPIO
+                # Cerrar todos los dispositivos gpiozero
                 for dispenser in self.dispensers.values():
                     if hasattr(dispenser, 'close'):
                         dispenser.close()
-                        
+
                 for sensor in self.sensors.values():
                     if hasattr(sensor, 'close'):
                         sensor.close()
-                        
-                logger.info("GPIO cleanup completado")
+
+                logger.info("GPIO cleanup completado (gpiozero)")
             except Exception as e:
                 logger.error(f"Error durante GPIO cleanup: {e}")
         else:
