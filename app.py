@@ -79,34 +79,40 @@ def process_purchase():
         door_config = config_manager.get_door(door_id)
         if not door_config:
             return jsonify({'success': False, 'error': 'Puerta no encontrada'}), 404
-        
+
         product = db_manager.get_product_by_door(door_id)
         if not product:
             return jsonify({'success': False, 'error': 'No hay producto configurado en esta puerta'}), 404
-        
+
         if product['stock'] <= 0:
             return jsonify({'success': False, 'error': 'Sin stock'}), 400
-        
+
         if not product['active']:
             return jsonify({'success': False, 'error': 'Producto no disponible'}), 400
-        
+
         amount = product['price']
-        
+
         # Procesar pago según método
         payment_result = None
         if payment_method == 'contactless':
             # Usar TPV para pago contactless
             payment_result = tpv_controller.process_contactless_payment(amount)
+        elif payment_method == 'usb':
+            # Simulación: pago por USB siempre OK
+            payment_result = {
+                'success': True,
+                'payment_id': 'USB_SIMULADO_OK'
+            }
         else:
             return jsonify({'success': False, 'error': 'Método de pago no soportado'}), 400
-        
+
         if not payment_result or not payment_result.get('success'):
             return jsonify({
-                'success': False, 
+                'success': False,
                 'error': 'Error en el pago',
                 'details': payment_result.get('error', 'Error desconocido')
             }), 400
-        
+
         # Crear registro de venta
         sale_id = db_manager.create_sale(
             door_id         = door_id,
@@ -115,18 +121,18 @@ def process_purchase():
             amount          = amount,
             payment_id      = payment_result.get('payment_id')
         )
-        
+
         if not sale_id:
             return jsonify({'success': False, 'error': 'Error al registrar venta'}), 500
-        
+
         # Dispensar producto usando el nuevo sistema de hardware
         dispense_result = hardware_controller.open_door(door_id)
-        
+
         if dispense_result:
             # Actualizar stock y estado de venta
             db_manager.decrease_stock(door_id, 1)
             db_manager.update_sale_status(sale_id, 'completed', dispensed=True)
-            
+
             # Log del evento
             db_manager.log_system_event(
                 'INFO',
@@ -134,7 +140,7 @@ def process_purchase():
                 'purchase_controller',
                 door_id
             )
-            
+
             return jsonify({
                 'success'       : True,
                 'message'       : 'Compra realizada con éxito',
@@ -146,13 +152,13 @@ def process_purchase():
         else:
             # Error al dispensar - revertir venta
             db_manager.update_sale_status(sale_id, 'failed')
-            
+
             return jsonify({
                 'success'   : False,
                 'error'     : 'Error al dispensar producto. Contacte con soporte.',
                 'sale_id'   : sale_id
             }), 500
-            
+
     except Exception as e:
         logger.error(f"Error en proceso de compra: {e}")
         return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
