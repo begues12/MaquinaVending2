@@ -162,34 +162,12 @@ class TPVController:
     def test_connection(self) -> Dict[str, Any]:
         """Probar conexión con el TPV"""
         try:
-            if self.platform == 'raspberry' and self.tpv_enabled:
-                # Probar conexión real
-                tpv = self.serial.Serial(
-                    self.serial_config['port'],
-                    baudrate=self.serial_config['baudrate'],
-                    timeout=2
-                )
-                
-                # Enviar comando de test
-                test_cmd = ":TEST:\n".encode()
-                tpv.write(test_cmd)
-                
-                response = tpv.readline()
-                tpv.close()
-                
-                return {
-                    'success': True,
-                    'message': 'Conexión TPV exitosa',
-                    'response': response.decode().strip()
-                }
-            else:
-                # Simulación
-                return {
-                    'success': True,
-                    'message': 'TPV simulado funcionando correctamente',
-                    'response': ':OK:TEST:READY:'
-                }
-                
+            # Siempre simular la conexión TPV, nunca abrir puerto USB
+            return {
+                'success': True,
+                'message': 'TPV simulado funcionando correctamente',
+                'response': ':OK:TEST:READY:'
+            }
         except Exception as e:
             logger.error(f"Error al probar conexión TPV: {e}")
             return {
