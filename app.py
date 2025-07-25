@@ -570,16 +570,20 @@ def export_sales_json():
 @app.route('/api/usb/detect')
 def detect_usb():
     """Detectar unidades USB conectadas"""
-    try:
-        usb_drives = sales_history_controller.detect_usb_drives()
-        return jsonify({
-            'success': True,
-            'usb_drives': usb_drives,
-            'count': len(usb_drives)
-        })
-    except Exception as e:
-        logger.error(f"Error al detectar USB: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+    # Simulación: siempre acepta un USB ficticio
+    usb_drives = [
+        {
+            'name': 'USB_SIMULADO',
+            'mount_point': '/media/usb_simulado',
+            'size': '16GB',
+            'filesystem': 'FAT32'
+        }
+    ]
+    return jsonify({
+        'success': True,
+        'usb_drives': usb_drives,
+        'count': len(usb_drives)
+    })
 
 @app.route('/api/sales/export/usb', methods=['POST'])
 def export_to_usb():
