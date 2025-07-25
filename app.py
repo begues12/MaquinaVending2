@@ -941,9 +941,7 @@ def start_app():
             resizable=True,
             fullscreen=False,
             easy_drag=False,
-            frameless=False,
-            # Desactivar aceleración por hardware
-            webview_args=['--disable-gpu', '--disable-software-rasterizer']
+            frameless=False
         )
         
         logger.info("Iniciando aplicación...")
