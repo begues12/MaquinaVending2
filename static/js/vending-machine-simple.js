@@ -317,30 +317,126 @@ class VendingMachineSimple {
     updateLanguageInterface() {
         // Usar el sistema de traducciones global
         const t = (key) => window.t ? window.t(key, this.currentLanguage) : key;
-        
+
         // Actualizar título principal
         const selectDoorTitle = document.querySelector('h4');
         if (selectDoorTitle) {
             selectDoorTitle.innerHTML = `<i class="bi bi-grid-3x3"></i> ${t('select_door')}`;
         }
-        
+
         // Actualizar instrucciones
         const instruction = document.querySelector('.text-muted');
         if (instruction) {
             instruction.textContent = t('click_number');
         }
-        
-        // Actualizar salvapantallas
+
+        // Salvapantallas principal
         const screensaverTitle = document.querySelector('.screensaver-title');
         if (screensaverTitle) {
             screensaverTitle.textContent = t('screensaver_title');
         }
-        
         const screensaverSubtitle = document.querySelector('.screensaver-subtitle');
         if (screensaverSubtitle) {
             screensaverSubtitle.textContent = t('screensaver_subtitle');
         }
-        
+
+        // Salvapantallas de puerta abierta
+        const doorOpenSubtitle = document.querySelector('.door-open-subtitle');
+        if (doorOpenSubtitle) {
+            // Ejemplo: "¡Puerta <span id='door-open-number'></span> Abierta!"
+            doorOpenSubtitle.innerHTML = `${t('door_number') || 'Puerta'} <span id="door-open-number"></span> ${t('open') || 'Abierta'}!`;
+        }
+        const doorOpenMessage = document.querySelector('.door-open-message');
+        if (doorOpenMessage) {
+            doorOpenMessage.textContent = t('take_product') || 'Retira tu producto de la bandeja';
+        }
+        const progressText = document.querySelector('.progress-text');
+        if (progressText) {
+            progressText.textContent = t('time_to_close') || 'Tiempo restante para cerrar la puerta';
+        }
+        const doorOpenFooter = document.querySelector('.door-open-footer p');
+        if (doorOpenFooter) {
+            doorOpenFooter.textContent = t('auto_close') || 'La puerta se cerrará automáticamente';
+        }
+
+        // Modal de producto
+        const modalTitle = document.querySelector('#productModal .modal-title');
+        if (modalTitle) {
+            modalTitle.innerHTML = `<i class="bi bi-door-open"></i> ${t('door_number') || 'Puerta'} <span id="modal-door-number"></span>`;
+        }
+        const priceDisplay = document.querySelector('#productModal .price-display p.text-muted');
+        if (priceDisplay) {
+            priceDisplay.textContent = t('price_with_tax') || 'Precio con IVA incluido';
+        }
+        const stockBadge = document.getElementById('modal-stock-badge');
+        if (stockBadge) {
+            if (stockBadge.classList.contains('bg-success')) {
+                stockBadge.innerHTML = `<i class="bi bi-check-circle"></i> ${t('in_stock') || 'En stock'}`;
+            } else {
+                stockBadge.innerHTML = `<i class="bi bi-x-circle"></i> ${t('out_of_stock') || 'Sin stock'}`;
+            }
+        }
+        const cancelBtn = document.querySelector('#productModal .btn-outline-secondary');
+        if (cancelBtn) {
+            cancelBtn.innerHTML = `<i class="bi bi-x-circle"></i> ${t('cancel') || 'Cancelar'}`;
+        }
+        const confirmBtn = document.getElementById('modal-continue-purchase');
+        if (confirmBtn) {
+            confirmBtn.innerHTML = `<i class="bi bi-wifi"></i> ${t('confirm_purchase') || 'Confirmar Compra'}`;
+        }
+
+        // Modal de pago contactless
+        const contactlessTitle = document.querySelector('#contactlessModal .modal-title');
+        if (contactlessTitle) {
+            contactlessTitle.textContent = t('contactless_payment') || 'Pago Sin Contacto';
+        }
+        const contactlessTotal = document.querySelector('#contactlessModal h2');
+        if (contactlessTotal) {
+            contactlessTotal.innerHTML = `${t('total_to_pay') || 'Total a pagar'}: <span id="contactless-total" class="text-success"></span>`;
+        }
+        const contactlessAlert = document.querySelector('#contactlessModal .alert-info h4');
+        if (contactlessAlert) {
+            contactlessAlert.innerHTML = `<i class="bi bi-credit-card"></i> ${t('bring_card') || 'Acerca tu tarjeta'}`;
+        }
+        const contactlessAlertP = document.querySelector('#contactlessModal .alert-info p');
+        if (contactlessAlertP) {
+            contactlessAlertP.textContent = t('put_card_near_reader') || 'Coloca tu tarjeta contactless cerca del lector TPV';
+        }
+        const contactlessAlertSmall = document.querySelector('#contactlessModal .alert-info small');
+        if (contactlessAlertSmall) {
+            contactlessAlertSmall.textContent = t('auto_payment') || 'El pago se procesará automáticamente';
+        }
+        const contactlessCancelBtn = document.querySelector('#contactlessModal .btn-secondary');
+        if (contactlessCancelBtn) {
+            contactlessCancelBtn.textContent = t('cancel') || 'Cancelar';
+        }
+        const contactlessPayBtn = document.getElementById('contactless-pay-btn');
+        if (contactlessPayBtn) {
+            contactlessPayBtn.innerHTML = `<i class="bi bi-wifi"></i> ${t('start_payment') || 'Iniciar Pago'}`;
+        }
+
+        // Modal de dispensando
+        const dispensingTitle = document.querySelector('#dispensingModal h5');
+        if (dispensingTitle) {
+            dispensingTitle.textContent = t('dispensing_product') || 'Dispensando producto...';
+        }
+        const dispensingMsg = document.querySelector('#dispensingModal p');
+        if (dispensingMsg) {
+            dispensingMsg.textContent = t('please_wait') || 'Por favor espera mientras preparamos tu producto';
+        }
+
+        // Modal de estado/resultado
+        const statusTitle = document.getElementById('status-title');
+        if (statusTitle) {
+            statusTitle.textContent = t('status') || 'Estado';
+        }
+        const statusAcceptBtn = document.querySelector('#statusModal .btn-primary');
+        if (statusAcceptBtn) {
+            statusAcceptBtn.textContent = t('accept') || 'Aceptar';
+        }
+
+        // Otros textos pueden añadirse aquí según sea necesario
+
         console.log(`🌍 Idioma cambiado a: ${this.currentLanguage}`);
     }
 
@@ -1059,10 +1155,16 @@ class VendingMachineSimple {
     activateScreensaver() {
         const screensaver = document.getElementById('screensaver');
         const mainApp = document.getElementById('main-app');
-        
+
+        // Cerrar cualquier modal abierto
+        document.querySelectorAll('.modal.show').forEach(modal => {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+        });
+
         // Limpiar cualquier selección
         this.clearSelection();
-        
+
         // Mostrar screensaver
         screensaver.style.display = 'flex';
         mainApp.style.display = 'none';

@@ -134,29 +134,29 @@ class DatabaseManager:
                 conn.close()
                 return
             
-            # Productos de ejemplo para las 14 puertas
+            # Productos de ejemplo: ramos de flores, sin imagen ni descripción, precios entre 30 y 50€
             sample_products = [
-                ('A1', 'Coca Cola', 1.5, 0, '/static/images/coca_cola.jpg', 'Refresco de cola clásico'),
-                ('A2', 'Pepsi', 1.5, 5, '/static/images/pepsi.jpg', 'Refresco de cola alternativo'),
-                ('B1', 'Agua Mineral', 1.0, 8, '/static/images/agua.jpg', 'Agua mineral natural'),
-                ('B2', 'Snickers', 2.0, 0, '/static/images/snickers.jpg', 'Barrita de chocolate y cacahuetes'),
-                ('C1', 'Kit Kat', 1.8, 6, '/static/images/kitkat.jpg', 'Barrita de chocolate con galleta'),
-                ('C2', 'Twix', 1.8, 4, '/static/images/twix.jpg', 'Barrita de caramelo y galleta'),
-                ('D1', 'Chocolate', 2.5, 3, '/static/images/chocolate.jpg', 'Tableta de chocolate'),
-                ('D2', 'Chips', 1.5, 0, '/static/images/chips.jpg', 'Patatas fritas'),
-                ('E1', 'Galletas', 1.2, 0, '/static/images/galletas.jpg', 'Paquete de galletas'),
-                ('E2', 'Chicles', 0.5, 10, '/static/images/chicles.jpg', 'Chicles de menta'),
-                ('F1', 'Agua con Gas', 1.0, 5, '/static/images/agua_con_gas.jpg', 'Agua mineral con gas'),
-                ('F2', 'Fanta', 1.5, 0, '/static/images/fanta.jpg', 'Refresco de naranja'),
-                ('G1', 'Red Bull', 2.0, 3, '/static/images/redbull.jpg', 'Bebida energética'),
-                ('G2', 'Sprite', 1.5, 7, '/static/images/sprite.jpg', 'Refresco de lima-limón')
+                ('A1', 'Ramo Primavera', 35.0, 1),
+                ('A2', 'Ramo Rosas Rojas', 45.0, 1),
+                ('B1', 'Ramo Tulipanes', 32.0, 1),
+                ('B2', 'Ramo Lirios Blancos', 38.0, 1),
+                ('C1', 'Ramo Mixto Color', 40.0, 1),
+                ('C2', 'Ramo Margaritas', 30.0, 1),
+                ('D1', 'Ramo Elegancia', 50.0, 1),
+                ('D2', 'Ramo Peonías', 48.0, 1),
+                ('E1', 'Ramo Girasoles', 36.0, 1),
+                ('E2', 'Ramo Rosas Blancas', 42.0, 1),
+                ('F1', 'Ramo Frescura', 33.0, 1),
+                ('F2', 'Ramo Exótico', 47.0, 1),
+                ('G1', 'Ramo Pastel', 39.0, 1),
+                ('G2', 'Ramo Aromático', 44.0, 1)
             ]
-            
-            for door_id, name, price, stock, image, description in sample_products:
+
+            for door_id, name, price, stock in sample_products:
                 cursor.execute('''
-                    INSERT INTO products (door_id, name, price, stock, image_url, description, active)
-                    VALUES (?, ?, ?, ?, ?, ?, 1)
-                ''', (door_id, name, price, stock, image, description))
+                    INSERT INTO products (door_id, name, price, stock, active)
+                    VALUES (?, ?, ?, ?, 1)
+                ''', (door_id, name, price, stock))
             
             conn.commit()
             conn.close()

@@ -939,7 +939,7 @@ def start_app():
             width=Config.WINDOW_WIDTH,
             height=Config.WINDOW_HEIGHT,
             resizable=True,
-            fullscreen=False
+            fullscreen=True
         )
         
         logger.info("Iniciando aplicación...")
