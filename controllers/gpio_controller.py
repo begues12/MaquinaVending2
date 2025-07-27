@@ -29,10 +29,15 @@ class GPIOController:
             from machine_config import config_manager
             doors = config_manager.get_doors()
             door_pins = {}
+            missing_doors = []
             for door_id, door_config in doors.items():
                 if 'gpio_pin' in door_config:
                     door_pins[door_id] = door_config['gpio_pin']
+                else:
+                    missing_doors.append(door_id)
             logger.info(f"Configuración cargada: {len(door_pins)} dispensadores")
+            if missing_doors:
+                logger.warning(f"Las siguientes puertas no tienen gpio_pin configurado y no funcionarán: {missing_doors}")
             return door_pins
         except Exception as e:
             logger.error(f"Error al cargar configuración de puertas: {e}")
