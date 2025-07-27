@@ -86,7 +86,7 @@ def process_purchase():
         if dispense_result:
             # Actualizar stock
             db_manager.decrease_stock(door_id, 1)
-            db_manager.update_product_status(door_id, active=(product['stock']-1 > 0))
+            db_manager.update_product(door_id, active=(product['stock']-1 > 0))
             return jsonify({
                 'success': True,
                 'message': 'Producto dispensado correctamente',
