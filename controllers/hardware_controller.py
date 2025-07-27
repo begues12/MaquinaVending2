@@ -565,4 +565,3 @@ class HardwareController:
 
 # Instancia global del controlador
 hardware_controller = HardwareController()
-hardware_controller._initialize_gpio()
