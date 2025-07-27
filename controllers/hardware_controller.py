@@ -89,8 +89,7 @@ class HardwareController:
         self.sensor_debounce = 200  # Milisegundos de rebote para sensores
         
         # Estado de inicialización
-        self.initialized = True
-        
+        self.initialized = False
         self._initialize_gpio()
         
     def _load_config(self) -> dict:
@@ -113,10 +112,8 @@ class HardwareController:
     def _initialize_gpio(self):
         """Inicializar configuración de GPIO"""
         try:
-            # Configurar pines de las puertas
             doors_config = self.config.get('doors', {})
-            
-            # Inicializar estados de puertas independientemente del modo
+            # Inicializar estados de puertas
             for door_id, door_info in doors_config.items():
                 self.door_states[door_id] = {
                     'is_open': False,
@@ -124,41 +121,34 @@ class HardwareController:
                     'last_opened': None,
                     'last_closed': None
                 }
-            
-            if not GPIO_AVAILABLE:
-                self.logger.warning("GPIO no disponible - modo simulación activado")
-                self.initialized = True
-                return
-                
-            # Configurar modo GPIO solo si está disponible
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setwarnings(False)
-            
+            # Verificar pines duplicados
+            used_pins = set()
+            duplicate_pins = set()
             for door_id, door_info in doors_config.items():
                 gpio_pin = door_info.get('gpio_pin')
-                sensor_pin = door_info.get('sensor_pin')
-                
                 if gpio_pin:
-                    # Configurar pin de relé como salida (normalmente cerrado)
+                    if gpio_pin in used_pins:
+                        duplicate_pins.add(gpio_pin)
+                    used_pins.add(gpio_pin)
+            if duplicate_pins:
+                self.logger.error(f"Pines duplicados en configuración: {list(duplicate_pins)}. Cada puerta debe tener un pin único.")
+                self.initialized = False
+                return
+            if not GPIO_AVAILABLE:
+                self.logger.error("GPIO no disponible - modo simulación activado. No se puede inicializar hardware real.")
+                self.initialized = False
+                return
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setwarnings(False)
+            for door_id, door_info in doors_config.items():
+                gpio_pin = door_info.get('gpio_pin')
+                if gpio_pin:
                     GPIO.setup(gpio_pin, GPIO.OUT)
                     GPIO.output(gpio_pin, GPIO.LOW)
-                    
-                if sensor_pin:
-                    # Configurar pin de sensor como entrada con pull-up
-                    GPIO.setup(sensor_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                    
-                    # Configurar detección de eventos
-                    GPIO.add_event_detect(
-                        sensor_pin, 
-                        GPIO.BOTH, 
-                        callback=lambda channel, door=door_id: self._sensor_callback(door, channel),
-                        bouncetime=self.sensor_debounce
-                    )
-            
             self.initialized = True
             self.logger.info("GPIO inicializado correctamente")
-            
         except Exception as e:
+            self.initialized = False
             self.logger.error(f"Error inicializando GPIO: {e}")
     
     def _sensor_callback(self, door_id: str, channel: int):
@@ -348,7 +338,14 @@ class HardwareController:
         """Activar un relé simple (un pin, un relé)"""
         try:
             if GPIO_AVAILABLE:
-                GPIO.output(gpio_pin, GPIO.HIGH)
+                # Verificar si el pin está configurado como OUTPUT
+                try:
+                    GPIO.output(gpio_pin, GPIO.HIGH)
+                except Exception as e:
+                    # Si falla, intentar configurar el pin como OUTPUT y reintentar
+                    self.logger.warning(f"Pin {gpio_pin} no estaba configurado como OUTPUT. Configurando...")
+                    GPIO.setup(gpio_pin, GPIO.OUT)
+                    GPIO.output(gpio_pin, GPIO.HIGH)
             else:
                 print(f"SIMULACIÓN: Activando relé simple puerta {door_id} en pin {gpio_pin}")
             return True
@@ -623,76 +620,7 @@ class HardwareController:
             'gpio_pins': {}
         }
         
-        # Agrupar por pin GPIO
-        for door_id, door_info in doors_config.items():
-            gpio_pin = door_info.get('gpio_pin')
-            if gpio_pin not in validation_results['gpio_pins']:
-                validation_results['gpio_pins'][gpio_pin] = []
-            
-            validation_results['gpio_pins'][gpio_pin].append({
-                'door_id': door_id,
-                'relay_index': door_info.get('relay_index', 0),
-                'is_matrix': door_info.get('relay_matrix', False)
-            })
-        
-        # Validar cada pin
-        for gpio_pin, doors in validation_results['gpio_pins'].items():
-            # Verificar índices duplicados
-            indices = [d['relay_index'] for d in doors if d['is_matrix']]
-            if len(indices) != len(set(indices)):
-                validation_results['conflicts'].append(f"Pin {gpio_pin}: Índices duplicados en matriz")
-            
-            # Verificar mezcla de simple y matriz con mismo índice
-            simple_doors = [d for d in doors if not d['is_matrix']]
-            matrix_doors = [d for d in doors if d['is_matrix']]
-            
-            if len(simple_doors) > 1:
-                validation_results['conflicts'].append(f"Pin {gpio_pin}: Múltiples relés simples")
-            
-            if simple_doors and matrix_doors:
-                for simple in simple_doors:
-                    if simple['relay_index'] in [m['relay_index'] for m in matrix_doors]:
-                        validation_results['conflicts'].append(f"Pin {gpio_pin}: Conflicto entre relé simple y matriz en índice {simple['relay_index']}")
-        
-        return validation_results
-
-    def test_all_doors(self) -> Dict[str, bool]:
-        """Probar todas las puertas configuradas"""
-        results = {}
-        doors_config = self.config.get('doors', {})
-        
-        for door_id in doors_config.keys():
-            results[door_id] = self.test_door(door_id)
-            time.sleep(1)  # Pausa entre pruebas
-            
-        return results
-    
-    def emergency_stop(self):
-        """Detener todos los relés inmediatamente"""
-        try:
-            self.logger.warning("Ejecutando parada de emergencia")
-            
-            doors_config = self.config.get('doors', {})
-            
-            for door_id, door_info in doors_config.items():
-                gpio_pin = door_info.get('gpio_pin')
-                if gpio_pin:
-                    if GPIO_AVAILABLE:
-                        GPIO.output(gpio_pin, GPIO.LOW)
-                    
-                    # Cancelar timers activos
-                    if door_id in self.door_timers:
-                        self.door_timers[door_id].cancel()
-                        del self.door_timers[door_id]
-                    
-                    # Actualizar estado
-                    if door_id in self.door_states:
-                        self.door_states[door_id]['relay_active'] = False
-            
-            self.logger.info("Parada de emergencia completada")
-            
-        except Exception as e:
-            self.logger.error(f"Error en parada de emergencia: {e}")
+        # ...existing code...
     
     def cleanup(self):
         """Limpiar recursos GPIO"""
