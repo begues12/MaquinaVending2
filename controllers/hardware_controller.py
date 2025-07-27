@@ -286,8 +286,8 @@ class HardwareController:
         Activar relé para abrir una puerta específica y cerrarlo automáticamente tras el tiempo configurado
         """
         try:
-            doors_config = self.config.get('doors', {})
-            door_info = doors_config.get(door_id)
+            doors_config    = self.config.get('doors', {})
+            door_info       = doors_config.get(door_id)
             if not door_info:
                 print(f"Puerta {door_id} no encontrada en configuración")
                 self.logger.error(f"Puerta {door_id} no encontrada en configuración")

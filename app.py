@@ -64,29 +64,28 @@ def get_door(door_id):
 # Ruta principal de compra
 @app.route('/api/purchase', methods=['POST'])
 def process_purchase():
-    """Procesar compra: abrir relé y actualizar producto"""
-    data = request.get_json()
-    if not data or 'door_id' not in data:
-        return jsonify({'success': False, 'error': 'ID de puerta requerido'}), 400
-    door_id = data['door_id']
+    """Peticion para procesar una compra"""
+    #De momento devuelve siempre true
     try:
-        # Verificar puerta y producto
-        door_config = config_manager.get_door(door_id)
-        if not door_config:
-            return jsonify({'success': False, 'error': 'Puerta no encontrada'}), 404
+        data = request.get_json()
+        if not data or 'door_id' not in data:
+            return jsonify({'success': False, 'error': 'Datos de compra inválidos'}), 400
+        
+        door_id = data['door_id']
         product = db_manager.get_product_by_door(door_id)
+        
         if not product:
-            return jsonify({'success': False, 'error': 'No hay producto configurado en esta puerta'}), 404
-        if product['stock'] <= 0:
-            return jsonify({'success': False, 'error': 'Sin stock'}), 400
-        if not product['active']:
-            return jsonify({'success': False, 'error': 'Producto no disponible'}), 400
-
-        else:
-            return jsonify({'success': False, 'error': f'Error al abrir relé para puerta {door_id}'}), 500
+            return jsonify({'success': False, 'error': 'Producto no encontrado'}), 404
+        
+        # Simular compra exitosa
+        return jsonify({
+            'success': True,
+            'message': f'Compra viable para {product["name"]}',
+            'product': product
+        })
     except Exception as e:
-        logger.error(f"Error en process_purchase: {e}")
-        return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
+        logger.error(f"Error al procesar compra: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Rutas para modo reposición
 @app.route('/api/restock/click', methods=['POST'])
