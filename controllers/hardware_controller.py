@@ -73,41 +73,7 @@ except ImportError:
     GPIO = MockGPIO()
 
 class HardwareController:
-    def cleanup_gpio(self):
-        """Limpiar todos los recursos GPIO y gpiozero, independientemente de la configuración de puertas"""
-        try:
-            # Cerrar todos los OutputDevice conocidos
-            if hasattr(self, 'door_relays') and self.door_relays:
-                for rel in self.door_relays.values():
-                    try:
-                        rel.close()
-                    except Exception as e:
-                        self.logger.warning(f"Error cerrando OutputDevice: {e}")
-                self.door_relays.clear()
-
-            # Limpiar todos los pines usados por gpiozero OutputDevice
-            try:
-                # Si no hay relays configurados, intentar limpiar todos los pines posibles
-                # Esto requiere saber los pines usados, pero si no hay, limpiar los pines típicos
-                for pin in range(2, 28):  # GPIO2 a GPIO27 (Raspberry Pi)
-                    try:
-                        OutputDevice.close_pin(pin)
-                    except Exception:
-                        pass
-            except Exception as e:
-                self.logger.warning(f"Error cerrando pines gpiozero: {e}")
-
-            # Limpiar GPIO
-            if GPIO_AVAILABLE:
-                try:
-                    GPIO.cleanup()
-                except Exception as e:
-                    self.logger.warning(f"Error en GPIO.cleanup(): {e}")
-
-            self.logger.info("Limpieza global de GPIO y gpiozero completada")
-        except Exception as e:
-            self.logger.error(f"Error en limpieza global de GPIO: {e}")
-    """Controlador principal para el hardware de la máquina expendedora"""
+    
     
     def __init__(self, config_path: str = "machine_config.json"):
         self.config_path = config_path
@@ -597,11 +563,3 @@ class HardwareController:
     def __del__(self):
         """Destructor - limpiar recursos"""
         self.cleanup()
-
-# Instancia global del controlador
-hardware_controller = HardwareController()
-
-# Función para usar en el resto de la aplicación
-def get_hardware_controller() -> HardwareController:
-    """Obtener instancia del controlador de hardware"""
-    return hardware_controller

@@ -831,7 +831,6 @@ def start_app():
     except Exception as e:
         logger.error(f"Error al iniciar la aplicación: {e}")
     finally:
-        self.hardware_controller.cleanup()
         logger.info("Aplicación cerrada")
 
 if __name__ == '__main__':
