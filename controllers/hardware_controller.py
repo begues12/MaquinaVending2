@@ -281,19 +281,15 @@ class HardwareController:
                 return False
             gpio_pin = door_info.get('gpio_pin')
             relay_index = door_info.get('relay_index', 0)
-            relay_matrix = door_info.get('relay_matrix', False)
            
             if not gpio_pin:
                 self.logger.error(f"Puerta {door_id} no tiene gpio_pin configurado")
                 return False
             
             rele = OutputDevice(gpio_pin, active_high=True, initial_value=False)
-            
-            if relay_matrix:
-                rele.on()
+            rele.on()
                 
-                self.logger.info(f"Relé matriz activado para puerta {door_id} (pin {gpio_pin}, índice {relay_index})")
-                # Activar relé específico en matriz
+            self.logger.info(f"Relé matriz activado para puerta {door_id} (pin {gpio_pin}, índice {relay_index})")
             return True
         
         except Exception as e:
