@@ -71,17 +71,37 @@ def process_purchase():
         if not data or 'door_id' not in data:
             return jsonify({'success': False, 'error': 'Datos de compra inválidos'}), 400
         
+        import random, string, time
         door_id = data['door_id']
         product = db_manager.get_product_by_door(door_id)
-        
+
         if not product:
             return jsonify({'success': False, 'error': 'Producto no encontrado'}), 404
-        
-        # Simular compra exitosa
+
+        # Simular generación de payment_id
+        payment_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+
+        # Simular espera de 5-10 segundos para acercar la tarjeta
+        simulated_wait = random.randint(5, 10)
+        logger.info(f"Esperando {simulated_wait}s para simular acercar tarjeta en compra {payment_id}")
+        time.sleep(simulated_wait)
+
+        # Guardar estado de pago pendiente (en memoria, para demo)
+        # En producción, usar base de datos o cache
+        if not hasattr(app, 'pending_payments'):
+            app.pending_payments = {}
+        app.pending_payments[payment_id] = {
+            'door_id': door_id,
+            'product': product,
+            'status': 'pending',
+            'amount': product['price']
+        }
+
         return jsonify({
             'success': True,
             'message': f'Compra viable para {product["name"]}',
-            'product': product
+            'product': product,
+            'payment_id': payment_id
         })
     except Exception as e:
         logger.error(f"Error al procesar compra: {e}")

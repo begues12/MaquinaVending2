@@ -579,8 +579,6 @@ class VendingMachineSimple {
         this.currentModal = modal;
     }
 
-    showDoorInfo(doorId, doorData) {
-    }
 
     clearSelection() {
 
@@ -768,6 +766,56 @@ class VendingMachineSimple {
         
         const modal = new bootstrap.Modal(document.getElementById('contactlessModal'));
         modal.show();
+
+        // Llamar a purchase para inicializar el estado
+        // /api/purchase
+        const purchaseData = {
+            door_id: this.selectedDoor,
+        };
+
+        fetch('/api/purchase', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(purchaseData)
+        }).then(response => response.json())
+        .then(async result => {
+            if (result.success && result.payment_id) {
+                console.log('Compra inicializada correctamente, esperando pago...');
+                // Polling para esperar a que el usuario acerque la tarjeta y el backend confirme el pago
+                let paymentConfirmed = false;
+                let paymentError = null;
+                for (let i = 0; i < 20; i++) { // Espera hasta 20s máximo
+                    const paymentResponse = await fetch('/api/process_payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ payment_id: result.payment_id })
+                    });
+                    const paymentResult = await paymentResponse.json();
+                    if (paymentResult.success) {
+                        paymentConfirmed = true;
+                        break;
+                    } else if (paymentResult.error) {
+                        paymentError = paymentResult.error;
+                        break;
+                    }
+                    await new Promise(res => setTimeout(res, 1000));
+                }
+                if (paymentConfirmed) {
+                    console.log('Pago confirmado, puedes continuar el flujo.');
+                    // Aquí podrías llamar a la función que abre la puerta, muestra modal, etc.
+                } else {
+                    console.error('Error al procesar el pago:', paymentError || 'Timeout esperando pago');
+                }
+            } else {
+                console.error('Error al inicializar compra:', result.error);
+            }
+        }).catch(error => {
+            console.error('Error de comunicación con el servidor:', error);
+        });
         
         this.startScreensaverTimer();
     }
