@@ -79,16 +79,15 @@ class HardwareController:
         self.config_path = config_path
         self.config = self._load_config()
         self.logger = logging.getLogger(__name__)
-        
         # Estados de las puertas
         self.door_states = {}
         self.door_timers = {}
         self.door_callbacks = {}
-        
+        # Diccionario para OutputDevice por puerta
+        self.door_relays = {}
         # Configuración de relés (valor por defecto, se puede sobrescribir por puerta)
         self.default_relay_duration = 3.0  # Segundos por defecto
         self.sensor_debounce = 200  # Milisegundos de rebote para sensores
-        
         # Estado de inicialización
         self.initialized = False
         self._initialize_gpio()
@@ -111,10 +110,10 @@ class HardwareController:
             self.logger.error(f"Error guardando configuración: {e}")
     
     def _initialize_gpio(self):
-        """Inicializar configuración de GPIO"""
+        """Inicializar configuración de GPIO y crear OutputDevice por puerta"""
         try:
             doors_config = self.config.get('doors', {})
-            # Inicializar estados de puertas
+            # Inicializar estados de puertas y relés
             for door_id, door_info in doors_config.items():
                 self.door_states[door_id] = {
                     'is_open': False,
@@ -122,6 +121,12 @@ class HardwareController:
                     'last_opened': None,
                     'last_closed': None
                 }
+                gpio_pin = door_info.get('gpio_pin')
+                if gpio_pin:
+                    try:
+                        self.door_relays[door_id] = OutputDevice(gpio_pin, active_high=True, initial_value=False)
+                    except Exception as e:
+                        self.logger.error(f"Error creando OutputDevice para puerta {door_id} en pin {gpio_pin}: {e}")
             # Verificar pines duplicados
             used_pins = set()
             duplicate_pins = set()
@@ -135,19 +140,8 @@ class HardwareController:
                 self.logger.error(f"Pines duplicados en configuración: {list(duplicate_pins)}. Cada puerta debe tener un pin único.")
                 self.initialized = False
                 return
-            if not GPIO_AVAILABLE:
-                self.logger.error("GPIO no disponible - modo simulación activado. No se puede inicializar hardware real.")
-                self.initialized = False
-                return
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setwarnings(False)
-            for door_id, door_info in doors_config.items():
-                gpio_pin = door_info.get('gpio_pin')
-                if gpio_pin:
-                    GPIO.setup(gpio_pin, GPIO.OUT)
-                    GPIO.output(gpio_pin, GPIO.LOW)
             self.initialized = True
-            self.logger.info("GPIO inicializado correctamente")
+            self.logger.info("GPIO inicializado correctamente y relés creados por puerta")
         except Exception as e:
             self.initialized = False
             self.logger.error(f"Error inicializando GPIO: {e}")
@@ -281,17 +275,29 @@ class HardwareController:
                 self.logger.error(f"Puerta {door_id} no encontrada en configuración")
                 return False
             gpio_pin = door_info.get('gpio_pin')
-            relay_index = door_info.get('relay_index', 0)
+        
            
             if not gpio_pin:
                 print(f"Puerta {door_id} no tiene gpio_pin configurado")
                 self.logger.error(f"Puerta {door_id} no tiene gpio_pin configurado")
                 return False
-    
-            rele = OutputDevice(gpio_pin, active_high=True, initial_value=False)
+
+            # Llama al array de puertas
+            if door_id not in self.door_relays:
+                print(f"Relé no configurado para puerta {door_id}")
+                self.logger.error(f"Relé no configurado para puerta {door_id}")
+                return False
+            
+            rele = self.door_relays[door_id]
+            if not rele:
+                print(f"Relé no encontrado para puerta {door_id}")
+                self.logger.error(f"Relé no encontrado para puerta {door_id}")
+                return False
+            
+            # Activar relé
             rele.on()
-                
-            self.logger.info(f"Relé matriz activado para puerta {door_id} (pin {gpio_pin}, índice {relay_index})")
+            
+            self.logger.info(f"Relé matriz activado para puerta {door_id} (pin {gpio_pin})")
             return True
         
         except Exception as e:
