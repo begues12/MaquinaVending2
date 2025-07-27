@@ -544,14 +544,7 @@ def open_door_hardware(door_id):
 def close_door_hardware(door_id):
     """Cerrar puerta usando el sistema de hardware (relé)"""
     try:
-        # Verificar modo restock
-        restock_status = restock_controller.get_restock_status()
-        if not restock_status['active']:
-            return jsonify({
-                'success': False,
-                'error': 'Acceso denegado - modo restock requerido'
-            }), 403
-        
+
         # Cerrar puerta
         success = hardware_controller.close_door(door_id)
         
