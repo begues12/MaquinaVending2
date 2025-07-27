@@ -146,22 +146,7 @@ class HardwareController:
     def _initialize_gpio(self):
         """Inicializar configuración de GPIO y crear OutputDevice por puerta"""
         try:
-            # Configurar modo y warnings de GPIO antes de cualquier uso
-            if GPIO_AVAILABLE:
-                try:
-                    GPIO.setmode(GPIO.BCM)
-                    GPIO.setwarnings(False)
-                except Exception as e:
-                    self.logger.warning(f"Error configurando modo/warnings GPIO: {e}")
-
-            # Limpiar todos los OutputDevice previos
-            for rel in self.door_relays.values():
-                try:
-                    rel.close()
-                except Exception as e:
-                    self.logger.warning(f"Error cerrando OutputDevice previo: {e}")
-            self.door_relays.clear()
-            self.cleanup_gpio()
+  
             doors_config = self.config.get('doors', {})
             self.logger.info(f"Puertas cargadas desde config: {list(doors_config.keys())}")
             for door_id, door_info in doors_config.items():
@@ -185,24 +170,27 @@ class HardwareController:
                         self.logger.error(f"Error creando OutputDevice para puerta {door_id} en pin {gpio_pin}: {e}")
                 else:
                     self.logger.warning(f"Puerta {door_id} no tiene gpio_pin configurado, no se crea OutputDevice")
-            # Verificar pines duplicados
-            used_pins = set()
-            duplicate_pins = set()
-            for door_id, door_info in doors_config.items():
-                gpio_pin = door_info.get('gpio_pin')
-                if gpio_pin:
-                    if gpio_pin in used_pins:
-                        duplicate_pins.add(gpio_pin)
-                    used_pins.add(gpio_pin)
-            if duplicate_pins:
-                self.logger.error(f"Pines duplicados en configuración: {list(duplicate_pins)}. Cada puerta debe tener un pin único.")
-                self.initialized = False
-                return
+         
             self.initialized = True
             self.logger.info("GPIO inicializado correctamente y relés creados por puerta")
         except Exception as e:
             self.initialized = False
             self.logger.error(f"Error inicializando GPIO: {e}")
+    
+    def get_pins_status(self) -> Dict[str, int]:
+        """Obtener el estado actual de los pines GPIO"""
+        if not self.initialized:
+            self.logger.warning("GPIO no inicializado, retornando estado vacío")
+            return {}
+        
+        status = {}
+        for door_id, device in self.door_relays.items():
+            try:
+                status[door_id] = device.value
+            except Exception as e:
+                self.logger.error(f"Error obteniendo estado de {door_id}: {e}")
+                status[door_id] = None
+        return status
     
     def _sensor_callback(self, door_id: str, channel: int):
         """Callback para eventos de sensores de puerta"""

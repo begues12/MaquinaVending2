@@ -244,28 +244,6 @@ def update_product_in_door(door_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Rutas de testing y administración
-@app.route('/api/test/dispense/<door_id>', methods=['POST'])
-def test_dispense(door_id):
-    """Dispensar producto directamente (para testing)"""
-    try:
-        door_config = config_manager.get_door(door_id)
-        if not door_config:
-            return jsonify({'success': False, 'error': 'Puerta no encontrada'}), 404
-        
-        # Activar GPIO para testing        
-        if gpio_success:
-            logger.info(f"Test dispensado - Puerta: {door_id}")
-            return jsonify({
-                'success'   : True, 
-                'message'   : f'Test dispensado ejecutado para puerta {door_id}',
-                'gpio_pin'  : door_config.get('gpio_pin')
-            })
-        else:
-            return jsonify({'success': False, 'error': 'Error al activar GPIO'}), 500
-            
-    except Exception as e:
-        logger.error(f"Error en test dispensado: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/test/gpio-button', methods=['POST'])
 def test_gpio_button():
@@ -430,7 +408,7 @@ def get_machine_status():
 @app.route('/api/system/status')
 def system_status():
     """Estado del sistema"""
-    gpio_status = gpio_controller.get_pins_status()
+    gpio_status = hardware_controller.get_pins_status()
     payment_methods = payment_processor.get_payment_methods()
     
     return jsonify({
@@ -824,48 +802,6 @@ def set_multiple_door_open_times():
             'error': str(e)
         }), 500
 
-# Función de compra legacy mantenida para compatibilidad
-def process_purchase_legacy(slot: str, payment_method: str, payment_id: str = None) -> dict:
-    """Procesar una compra (función de compatibilidad con sistema anterior)"""
-    try:
-        # Convertir slot a door_id
-        door_id = slot.replace('slot_', '') if slot.startswith('slot_') else slot
-        
-        # Usar el nuevo sistema de configuración
-        result = config_manager.dispense_product(door_id)
-        if result['success']:
-            gpio_success = gpio_controller.dispense_product(f"slot_{door_id}")
-            
-            if gpio_success:
-                # Registrar transacción en la base de datos para historial
-                product_info = result['product']
-                db_manager.add_transaction(
-                    product_id=0,  # ID temporal para el nuevo sistema
-                    quantity=1,
-                    amount=product_info['price'],
-                    payment_method=payment_method,
-                    payment_reference=payment_id or 'N/A'
-                )
-                
-                logger.info(f"Compra completada - Puerta: {door_id}, Método: {payment_method}")
-                
-                return {
-                    'success': True,
-                    'message': 'Producto dispensado correctamente',
-                    'product': product_info,
-                    'remaining_stock': result['remaining_stock']
-                }
-            else:
-                # Revertir cambios en caso de error GPIO
-                door = config_manager.get_door(door_id)
-                config_manager.update_door_stock(door_id, door['product']['stock'])
-                return {'success': False, 'error': 'Error en dispensado GPIO'}
-        else:
-            return {'success': False, 'error': result['error']}
-            
-    except Exception as e:
-        logger.error(f"Error en process_purchase_legacy: {e}")
-        return {'success': False, 'error': str(e)}
 
 # Funciones auxiliares
 def process_purchase(slot: str, payment_method: str, payment_id: str = None) -> dict:
