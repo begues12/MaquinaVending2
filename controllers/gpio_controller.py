@@ -128,18 +128,12 @@ class GPIOController:
         return status
     
     def cleanup(self):
-        """Limpiar recursos GPIO al finalizar"""
+        """Limpiar recursos GPIO al finalizar (solo dispensadores)"""
         if self.platform == 'raspberry' and self.gpio_enabled:
             try:
-                # Cerrar todos los dispositivos gpiozero
                 for dispenser in self.dispensers.values():
                     if hasattr(dispenser, 'close'):
                         dispenser.close()
-
-                for sensor in self.sensors.values():
-                    if hasattr(sensor, 'close'):
-                        sensor.close()
-
                 logger.info("GPIO cleanup completado (gpiozero)")
             except Exception as e:
                 logger.error(f"Error durante GPIO cleanup: {e}")
