@@ -277,6 +277,7 @@ class HardwareController:
         try:
             doors_config = self.config.get('doors', {})
             door_info = doors_config.get(door_id)
+            
             if not door_info:
                 print(f"Puerta {door_id} no encontrada en configuración")
                 self.logger.error(f"Puerta {door_id} no encontrada en configuración")
@@ -304,7 +305,7 @@ class HardwareController:
             
             # Activar relé
             rele.on()
-            
+            print(f"Relé activado para puerta {door_id} (pin {gpio_pin})")
             self.logger.info(f"Relé matriz activado para puerta {door_id} (pin {gpio_pin})")
             return True
         
