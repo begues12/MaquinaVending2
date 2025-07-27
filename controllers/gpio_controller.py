@@ -112,16 +112,15 @@ class GPIOController:
             bool: True si el dispensado fue exitoso
         """
         try:
-            if door_id not in self.dispensers:
-                logger.warning(f"Dispensador no encontrado para puerta: {door_id}")
-                # En modo simulación, consideramos exitoso aunque no esté configurado
-                logger.info(f"Dispensador simulado para puerta: {door_id} (no configurado específicamente)")
-                return True
-
-            dispenser = self.dispensers[door_id]
+            dispenser = self.dispensers.get(door_id)
+            if dispenser is None:
+                logger.warning(f"Dispensador no configurado para puerta: {door_id}")
+                return False
 
             if self.platform == 'raspberry' and self.gpio_enabled:
-                # Activar motor del dispensador en Raspberry Pi usando gpiozero
+                # Asegurarse que el relé está apagado antes de activar
+                dispenser.off()
+                time.sleep(0.05)
                 dispenser.on()
                 time.sleep(0.5)  # Tiempo para dispensar
                 dispenser.off()
