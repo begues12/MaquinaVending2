@@ -73,6 +73,40 @@ except ImportError:
     GPIO = MockGPIO()
 
 class HardwareController:
+    def cleanup_gpio(self):
+        """Limpiar todos los recursos GPIO y gpiozero, independientemente de la configuración de puertas"""
+        try:
+            # Cerrar todos los OutputDevice conocidos
+            if hasattr(self, 'door_relays') and self.door_relays:
+                for rel in self.door_relays.values():
+                    try:
+                        rel.close()
+                    except Exception as e:
+                        self.logger.warning(f"Error cerrando OutputDevice: {e}")
+                self.door_relays.clear()
+
+            # Limpiar todos los pines usados por gpiozero OutputDevice
+            try:
+                # Si no hay relays configurados, intentar limpiar todos los pines posibles
+                # Esto requiere saber los pines usados, pero si no hay, limpiar los pines típicos
+                for pin in range(2, 28):  # GPIO2 a GPIO27 (Raspberry Pi)
+                    try:
+                        OutputDevice.close_pin(pin)
+                    except Exception:
+                        pass
+            except Exception as e:
+                self.logger.warning(f"Error cerrando pines gpiozero: {e}")
+
+            # Limpiar GPIO
+            if GPIO_AVAILABLE:
+                try:
+                    GPIO.cleanup()
+                except Exception as e:
+                    self.logger.warning(f"Error en GPIO.cleanup(): {e}")
+
+            self.logger.info("Limpieza global de GPIO y gpiozero completada")
+        except Exception as e:
+            self.logger.error(f"Error en limpieza global de GPIO: {e}")
     """Controlador principal para el hardware de la máquina expendedora"""
     
     def __init__(self, config_path: str = "machine_config.json"):
@@ -119,7 +153,7 @@ class HardwareController:
                 except Exception as e:
                     self.logger.warning(f"Error cerrando OutputDevice previo: {e}")
             self.door_relays.clear()
-            self.cleanup()
+            self.cleanup_gpio()
             doors_config = self.config.get('doors', {})
             self.logger.info(f"Puertas cargadas desde config: {list(doors_config.keys())}")
             for door_id, door_info in doors_config.items():
@@ -525,15 +559,7 @@ class HardwareController:
         Returns:
             Dict con información de validación
         """
-        doors_config = self.config.get('doors', {})
-        validation_results = {
-            'valid_matrices': [],
-            'conflicts': [],
-            'warnings': [],
-            'gpio_pins': {}
-        }
-        
-        # ...existing code...
+    
     
     def cleanup(self):
         """Limpiar todos los recursos: timers, OutputDevice, GPIO, y diccionarios internos"""
@@ -549,6 +575,7 @@ class HardwareController:
             # Cerrar todos los OutputDevice
             for rel in self.door_relays.values():
                 try:
+                    print(f"Cerrando OutputDevice para puerta {rel.pin}")
                     rel.close()
                 except Exception as e:
                     self.logger.warning(f"Error cerrando OutputDevice: {e}")
