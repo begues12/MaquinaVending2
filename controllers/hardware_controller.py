@@ -409,46 +409,41 @@ class HardwareController:
         except Exception as e:
             self.logger.error(f"Error desactivando relé matriz {door_id}: {str(e)}")
     
-    def get_door_state(self, door_id: str) -> Dict:
+    def open_door(self, door_id: str) -> bool:
         """
-        Obtener estado actual de una puerta
-        
+        Activar relé para abrir una puerta específica usando OutputDevice
         Args:
-            door_id: ID de la puerta
-            
+            door_id: ID de la puerta a abrir (ej: 'A1', 'B2')
         Returns:
-            Dict con información del estado de la puerta
+            bool: True si la operación fue exitosa
         """
-        door_state = self.door_states.get(door_id, {})
-        config_state = self.config.get('doors', {}).get(door_id, {})
-        
-        return {
-            'door_id': door_id,
-            'is_open': door_state.get('is_open', False),
-            'relay_active': door_state.get('relay_active', False),
-            'last_opened': door_state.get('last_opened'),
-            'last_closed': door_state.get('last_closed'),
-            'gpio_pin': config_state.get('gpio_pin'),
-            'sensor_pin': config_state.get('sensor_pin'),
-            'relay_matrix': config_state.get('relay_matrix', False),
-            'relay_index': config_state.get('relay_index', 0),
-            'last_maintenance': config_state.get('last_maintenance')
-        }
-
-    def get_relay_matrix_info(self, gpio_pin: int) -> Dict:
-        """
-        Obtener información sobre qué puertas comparten una matriz de relés
-        
-        Args:
-            gpio_pin: Pin GPIO de la matriz
-            
-        Returns:
-            Dict con información de la matriz
-        """
-        doors_config = self.config.get('doors', {})
-        matrix_doors = []
-        
-        for door_id, door_info in doors_config.items():
+        try:
+            doors_config = self.config.get('doors', {})
+            door_info = doors_config.get(door_id)
+            if not door_info:
+                self.logger.error(f"Puerta {door_id} no encontrada en configuración")
+                return False
+            gpio_pin = door_info.get('gpio_pin')
+            if not gpio_pin:
+                self.logger.error(f"Puerta {door_id} no tiene gpio_pin configurado")
+                return False
+            if door_id not in self.door_relays:
+                self.logger.error(f"No se encontró OutputDevice para puerta {door_id} (pin {gpio_pin})")
+                return False
+            rele = self.door_relays[door_id]
+            if not rele:
+                self.logger.error(f"OutputDevice para puerta {door_id} es None")
+                return False
+            try:
+                rele.on()
+                self.logger.info(f"Relé activado para puerta {door_id} (pin {gpio_pin})")
+                return True
+            except Exception as e:
+                self.logger.error(f"Error activando relé OutputDevice para puerta {door_id} (pin {gpio_pin}): {e}")
+                return False
+        except Exception as e:
+            self.logger.error(f"Error general abriendo puerta {door_id}: {e}")
+            return False
             if door_info.get('gpio_pin') == gpio_pin:
                 matrix_doors.append({
                     'door_id': door_id,

@@ -252,9 +252,7 @@ def test_dispense(door_id):
         if not door_config:
             return jsonify({'success': False, 'error': 'Puerta no encontrada'}), 404
         
-        # Activar GPIO para testing
-        gpio_success = gpio_controller.dispense_product(door_config['gpio_pin'])
-        
+        # Activar GPIO para testing        
         if gpio_success:
             logger.info(f"Test dispensado - Puerta: {door_id}")
             return jsonify({
@@ -897,8 +895,8 @@ def start_app():
     except Exception as e:
         logger.error(f"Error al iniciar la aplicación: {e}")
     finally:
-        # Cleanup
-        gpio_controller.cleanup()
+        self.hardware_controller.cleanup()
+        logger.info("Aplicación cerrada")
 
 if __name__ == '__main__':
     if Config.PLATFORM == 'windows':
