@@ -58,7 +58,6 @@ class GPIOController:
                     logger.error(f"Error al configurar dispensador {door_id} en pin {pin}: {e} [{type(e).__name__}]")
                     error_detected = True
             if error_detected:
-                self.hardware_initialized = False
                 logger.error("Hardware no inicializado correctamente: revisa los errores anteriores en el log.")
             else:
                 self.hardware_initialized = True
