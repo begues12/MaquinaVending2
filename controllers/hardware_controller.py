@@ -278,50 +278,63 @@ class HardwareController:
             self.logger.error(f"Error configurando tiempo de apertura para {door_id}: {e}")
             return False
 
+
     def open_door(self, door_id: str) -> bool:
         """
-        Activar relé para abrir una puerta específica usando gpiozero OutputDevice
-        Soporta matrices de relés con índices
-        
-        Args:
-            door_id: ID de la puerta a abrir (ej: 'A1', 'B2')
-        Returns:
-            bool: True si la operación fue exitosa
+        Activar relé para abrir una puerta específica y cerrarlo automáticamente tras el tiempo configurado
         """
         try:
             doors_config = self.config.get('doors', {})
             door_info = doors_config.get(door_id)
-            
             if not door_info:
                 print(f"Puerta {door_id} no encontrada en configuración")
                 self.logger.error(f"Puerta {door_id} no encontrada en configuración")
                 return False
-            
             gpio_pin = door_info.get('gpio_pin')
-        
             if not gpio_pin:
                 print(f"Puerta {door_id} no tiene gpio_pin configurado")
                 self.logger.error(f"Puerta {door_id} no tiene gpio_pin configurado")
                 return False
-
-            # Llama al array de puertas
             if door_id not in self.door_relays:
                 print(f"Relé no configurado para puerta {door_id}")
                 self.logger.error(f"Relé no configurado para puerta {door_id}")
                 return False
-            
             rele = self.door_relays[door_id]
             if not rele:
                 print(f"Relé no encontrado para puerta {door_id}")
                 self.logger.error(f"Relé no encontrado para puerta {door_id}")
                 return False
-            
+
             # Activar relé
             rele.on()
             print(f"Relé activado para puerta {door_id} (pin {gpio_pin})")
-            self.logger.info(f"Relé matriz activado para puerta {door_id} (pin {gpio_pin})")
+            self.logger.info(f"Relé activado para puerta {door_id} (pin {gpio_pin})")
+
+            # Obtener tiempo de apertura
+            open_time = self.get_door_open_time(door_id)
+            self.logger.info(f"Temporizador para puerta {door_id}: {open_time}s")
+
+            # Si ya hay un timer, cancelarlo
+            if door_id in self.door_timers:
+                try:
+                    self.door_timers[door_id].cancel()
+                except Exception:
+                    pass
+
+            # Crear timer para cerrar el relé
+            def close_relay():
+                try:
+                    rele.off()
+                    self.logger.info(f"Relé desactivado automáticamente para puerta {door_id} (pin {gpio_pin})")
+                except Exception as e:
+                    self.logger.error(f"Error desactivando relé {door_id}: {e}")
+
+            timer = threading.Timer(open_time, close_relay)
+            timer.daemon = True
+            self.door_timers[door_id] = timer
+            timer.start()
+
             return True
-        
         except Exception as e:
             print(f"Error abriendo puerta {door_id}: {e}")
             self.logger.error(f"Error abriendo puerta {door_id}: {e}")
