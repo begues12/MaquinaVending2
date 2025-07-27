@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Dict, Optional, List, Any
 from machine_config import config_manager
 from database import db_manager
+from hardware_controller import hardware_controller
 
 logger = logging.getLogger(__name__)
 
@@ -54,52 +55,18 @@ class RestockController:
         self.redirect_requested = False
         self.redirect_timestamp = None
         
-        if not self.is_windows:
-            try:
-                import RPi.GPIO as GPIO
-                self.GPIO = GPIO
-                self._setup_gpio()
-            except ImportError:
-                logger.warning("RPi.GPIO no disponible. Funcionando en modo simulación.")
-                self.GPIO = None
-        else:
-            logger.info("Modo reposición inicializado (Windows - simulación)")
-            self.GPIO = None
+        # Usar hardware_controller para toda la gestión de GPIO
+        self.GPIO = None  # No usar GPIO directo
+        logger.info("Modo reposición inicializado usando hardware_controller")
         
         if self.secret_sequence_enabled:
             logger.info(f"Secuencia secreta habilitada: {len(self.secret_sequence)} pasos")
         
         logger.info(f"Sistema de activación por clics habilitado: {self.click_sequence['first_phase']}+pausa+{self.click_sequence['second_phase']} clics")
     
-    def _setup_gpio(self):
-        """Configurar GPIO para el botón de reposición"""
-        if self.GPIO:
-            try:
-                self.GPIO.setmode(self.GPIO.BCM)
-                self.GPIO.setup(self.restock_pin, self.GPIO.IN, pull_up_down=self.GPIO.PUD_UP)
-                
-                # Configurar interrupción para detectar presión del botón
-                self.GPIO.add_event_detect(
-                    self.restock_pin, 
-                    self.GPIO.FALLING, 
-                    callback=self._button_pressed_callback,
-                    bouncetime=300
-                )
-                
-                logger.info(f"GPIO configurado para modo reposición en pin {self.restock_pin}")
-                
-            except Exception as e:
-                logger.error(f"Error al configurar GPIO para reposición: {e}")
+    # El setup de GPIO y la gestión de eventos se delega a hardware_controller
     
-    def _button_pressed_callback(self, channel):
-        """Callback cuando se presiona el botón de reposición"""
-        logger.info("Botón de reposición presionado")
-        self.toggle_restock_mode()
-        
-        # Solicitar redirección al panel de restock
-        self.redirect_requested = True
-        self.redirect_timestamp = datetime.now().isoformat()
-        logger.info("Redirección al panel de restock solicitada")
+    # El callback del botón físico debe ser registrado en hardware_controller si se requiere
     
     def toggle_restock_mode(self) -> bool:
         """Alternar modo reposición"""
@@ -155,16 +122,20 @@ class RestockController:
         return True
     
     def simulate_button_press(self) -> bool:
-        """Simular presión del botón GPIO pin 16 (para Windows/testing)"""
-        logger.info(f"Simulando presión del botón GPIO pin {self.restock_pin}")
-        
-        # Simular la misma lógica que el callback del botón físico
-        # Activar la bandera de redirección directamente
-        self.redirect_requested = True
-        self.redirect_timestamp = time.time()
-        
-        logger.info(f"GPIO pin {self.restock_pin} simulado - Redirección activada")
-        return True
+        """Simular presión del botón GPIO pin 16 (para Windows/testing) usando hardware_controller"""
+        logger.info(f"Simulando presión del botón GPIO pin {self.restock_pin} usando hardware_controller")
+        # Si hardware_controller tiene método para simular, llamarlo
+        try:
+            if hasattr(hardware_controller, 'simulate_button_press'):
+                hardware_controller.simulate_button_press(self.restock_pin)
+            # Activar la bandera de redirección directamente
+            self.redirect_requested = True
+            self.redirect_timestamp = time.time()
+            logger.info(f"GPIO pin {self.restock_pin} simulado - Redirección activada")
+            return True
+        except Exception as e:
+            logger.error(f"Error simulando presión de botón con hardware_controller: {e}")
+            return False
     
     def get_restock_status(self) -> Dict:
         """Obtener estado del modo reposición"""
@@ -554,13 +525,12 @@ class RestockController:
             return False
     
     def cleanup(self):
-        """Limpiar recursos GPIO al cerrar"""
-        if self.GPIO and not self.is_windows:
-            try:
-                self.GPIO.cleanup()
-                logger.info("GPIO limpiado correctamente")
-            except Exception as e:
-                logger.error(f"Error al limpiar GPIO: {e}")
+        """Limpiar recursos GPIO al cerrar usando hardware_controller"""
+        try:
+            hardware_controller.cleanup_gpio()
+            logger.info("GPIO limpiado correctamente por hardware_controller")
+        except Exception as e:
+            logger.error(f"Error al limpiar GPIO con hardware_controller: {e}")
 
 
 # Instancia global del controlador de reposición
