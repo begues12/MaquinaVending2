@@ -831,7 +831,7 @@ class VendingMachineSimple {
             // Si response es positivo enviar el open
             if(result.success){
                 //Enviar open
-                const openResponse = await fetch(`/api/door/open/${this.selectedDoor}`, {
+                const openResponse = await fetch(`/api/hardware/door/${this.selectedDoor}/open`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -939,22 +939,6 @@ class VendingMachineSimple {
         timerElement.textContent = remainingSeconds;
         progressBar.style.width = '100%';
         progressBar.style.background = '#0d6efd';
-
-        // Llamada para abrir la puerta en el backend al iniciar countdown
-        fetch(`/api/hardware/door/${doorId}/open`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        }).then(response => {
-            if (!response.ok) {
-                console.error('Error al abrir la puerta:', response.statusText);
-            } else {
-                console.log('Puerta abierta correctamente');
-            }
-        }).catch(error => {
-            console.error('Error de red al abrir la puerta:', error);
-        });
 
         console.log('Elementos encontrados, iniciando interval...');
 
