@@ -20,6 +20,7 @@ class GPIOController:
         self.pins_status = {}
         self.dispensers = {}
         self.sensors = {}
+        self.hardware_initialized = False
 
         # Preferir gpiozero en Raspberry Pi
         self._init_gpiozero()
@@ -64,6 +65,8 @@ class GPIOController:
             # Cargar configuración de puertas
             door_pins, sensor_pins = self._load_door_config()
 
+            error_detected = False
+
             # Configurar dispensadores
             for door_id, pin in door_pins.items():
                 try:
@@ -73,11 +76,12 @@ class GPIOController:
                     door_config = config_manager.get_door(door_id)
                     if 'active_high' in door_config:
                         active_high = door_config['active_high']
-                    self.dispensers[door_id] = OutputDevice(pin, active_high=False, initial_value=False)
+                    self.dispensers[door_id] = OutputDevice(pin, active_high=active_high, initial_value=False)
                     self.dispensers[door_id].off()  # Apagar relé al iniciar
                     logger.info(f"Dispensador OutputDevice configurado: {door_id} -> Pin {pin} (active_high={active_high})")
                 except Exception as e:
                     logger.error(f"Error al configurar dispensador {door_id} en pin {pin}: {e} [{type(e).__name__}]")
+                    error_detected = True
 
             # Configurar sensores
             for door_id, pin in sensor_pins.items():
@@ -86,9 +90,16 @@ class GPIOController:
                     logger.info(f"Sensor gpiozero configurado: {door_id} -> Pin {pin}")
                 except Exception as e:
                     logger.error(f"Error al configurar sensor {door_id} en pin {pin}: {e}")
+                    error_detected = True
 
-            logger.info("GPIO (gpiozero) inicializado correctamente")
+            if error_detected:
+                self.hardware_initialized = False
+                logger.error("Hardware no inicializado correctamente: revisa los errores anteriores en el log.")
+            else:
+                self.hardware_initialized = True
+                logger.info("GPIO (gpiozero) inicializado correctamente.")
         except ImportError:
+            self.hardware_initialized = False
             logger.error("Librería gpiozero no encontrada. Cambiando a modo simulación.")
             self._init_windows_simulation()
     
