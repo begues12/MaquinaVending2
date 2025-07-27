@@ -113,7 +113,13 @@ class HardwareController:
     def _initialize_gpio(self):
         """Inicializar configuración de GPIO y crear OutputDevice por puerta"""
         try:
-  
+            # Limpiar recursos GPIO antes de inicializar (evita 'GPIO busy' en reinicios)
+            try:
+                GPIO.cleanup()
+                self.logger.info("GPIO cleanup ejecutado antes de inicializar relés")
+            except Exception as e:
+                self.logger.warning(f"Error en GPIO cleanup previo: {e}")
+
             doors_config = self.config.get('doors', {})
             self.logger.info(f"Puertas cargadas desde config: {list(doors_config.keys())}")
             for door_id, door_info in doors_config.items():
