@@ -202,7 +202,7 @@
         "row": 3,
         "col": 4
       },
-      "gpio_pin": 29,
+      "gpio_pin": 20,,
       "sensor_pin": 27,
       "relay_matrix": false,
       "relay_index": 0,
@@ -217,7 +217,7 @@
         "row": 1,
         "col": 5
       },
-      "gpio_pin": 29,
+      "gpio_pin": 20,
       "sensor_pin": 28,
       "relay_matrix": true,
       "relay_index": 1,
@@ -232,7 +232,7 @@
         "row": 2,
         "col": 5
       },
-      "gpio_pin": 31,
+      "gpio_pin": 20,
       "sensor_pin": 29,
       "relay_matrix": false,
       "relay_index": 0,
@@ -247,7 +247,7 @@
         "row": 3,
         "col": 5
       },
-      "gpio_pin": 31,
+      "gpio_pin": 20,
       "sensor_pin": 30,
       "relay_matrix": true,
       "relay_index": 1,
