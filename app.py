@@ -65,115 +65,40 @@ def get_door(door_id):
 # Ruta principal de compra
 @app.route('/api/purchase', methods=['POST'])
 def process_purchase():
-    """Procesar compra completa con nueva configuración"""
+    """Procesar compra: abrir relé y actualizar producto"""
     data = request.get_json()
-    
     if not data or 'door_id' not in data:
-        return jsonify({'error': 'ID de puerta requerido'}), 400
-    
-    door_id         = data['door_id']
-    payment_method  = data.get('payment_method', 'contactless')
-
-    
-    
+        return jsonify({'success': False, 'error': 'ID de puerta requerido'}), 400
+    door_id = data['door_id']
     try:
-        # Verificar que la puerta existe y obtener producto
+        # Verificar puerta y producto
         door_config = config_manager.get_door(door_id)
         if not door_config:
             return jsonify({'success': False, 'error': 'Puerta no encontrada'}), 404
-
         product = db_manager.get_product_by_door(door_id)
         if not product:
             return jsonify({'success': False, 'error': 'No hay producto configurado en esta puerta'}), 404
-
         if product['stock'] <= 0:
             return jsonify({'success': False, 'error': 'Sin stock'}), 400
-
         if not product['active']:
             return jsonify({'success': False, 'error': 'Producto no disponible'}), 400
-
-        amount = product['price']
-
-        # Procesar pago según método
-        payment_result = None
-        payment_result = {
-                'success': True,
-                'payment_id': 'USB_SIMULADO_OK'
-            }
-        
-        # if payment_method == 'contactless':
-        #     # Usar TPV para pago contactless
-        #     payment_result = tpv_controller.process_contactless_payment(amount)
-        # elif payment_method == 'usb':
-        #     # Simulación: pago por USB siempre OK
-        #     # NO intentar conectar a /dev/ttyUSB0 ni ningún dispositivo físico
-        #     payment_result = {
-        #         'success': True,
-        #         'payment_id': 'USB_SIMULADO_OK'
-        #     }
-        # else:
-        #     return jsonify({'success': False, 'error': 'Método de pago no soportado'}), 400
-
-        if not payment_result or not payment_result.get('success'):
-            return jsonify({
-                'success': False,
-                'error': 'Error en el pago',
-                'details': payment_result.get('error', 'Error desconocido')
-            }), 400
-
-        # Crear registro de venta
-        sale_id = db_manager.create_sale(
-            door_id         = door_id,
-            product_id      = product['id'],
-            payment_method  = payment_method,
-            amount          = amount,
-            payment_id      = payment_result.get('payment_id')
-        )
-
-        if not sale_id:
-            return jsonify({'success': False, 'error': 'Error al registrar venta'}), 500
-
-        # Dispensar producto usando el nuevo sistema de hardware
+        # Abrir relé
         dispense_result = hardware_controller.open_door(door_id)
-
         if dispense_result:
-            # Actualizar stock y estado de venta
+            # Actualizar stock
             db_manager.decrease_stock(door_id, 1)
-            db_manager.update_sale_status(sale_id, 'completed', dispensed=True)
-
-            # Log del evento
-            db_manager.log_system_event(
-                'INFO',
-                f'Venta completada: {product["name"]} - €{amount}',
-                'purchase_controller',
-                door_id
-            )
-
+            db_manager.update_product_status(door_id, active=(product['stock']-1 > 0))
             return jsonify({
-                'success'       : True,
-                'message'       : 'Compra realizada con éxito',
-                'sale_id'       : sale_id,
-                'product'       : product['name'],
-                'amount'        : amount,
-                'payment_method': payment_method
+                'success': True,
+                'message': 'Producto dispensado correctamente',
+                'door_id': door_id,
+                'product': product['name'],
+                'remaining_stock': product['stock']-1
             })
         else:
-            # Error al dispensar - revertir venta
-            db_manager.update_sale_status(sale_id, 'failed')
-
-            # Obtener el último error del logger de hardware_controller
-            import logging
-            hw_logger = logging.getLogger('controllers.hardware_controller')
-            # Si usas otro nombre de logger, ajusta aquí
-            # No se puede acceder directamente al último error, así que sugerimos revisar el log
-            return jsonify({
-                'success'   : False,
-                'error'     : f'Error al dispensar producto en puerta {door_id}. Revisa el log para más detalles.',
-                'sale_id'   : sale_id
-            }), 500
-
+            return jsonify({'success': False, 'error': f'Error al abrir relé para puerta {door_id}'}), 500
     except Exception as e:
-        logger.error(f"Error en proceso de compra: {e}")
+        logger.error(f"Error en process_purchase: {e}")
         return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
 
 # Rutas para modo reposición
