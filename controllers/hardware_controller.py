@@ -5,6 +5,7 @@ Gestiona la apertura de puertas mediante relés y detecta el cierre con sensores
 import time
 import threading
 import logging
+logger = logging.getLogger(__name__)
 from typing import Dict, Optional, Callable
 import json
 import os
