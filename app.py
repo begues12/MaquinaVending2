@@ -87,6 +87,19 @@ def process_purchase():
         logger.error(f"Error al procesar compra: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/process_payment', methods=['POST'])
+def process_payment():
+    data = request.get_json()
+    if not data or 'amount' not in data:
+        return jsonify({'success': False, 'error': 'Datos de pago inválidos'}), 400
+
+    try:
+        # result = payment_processor.process_payment(data['amount'])
+        return jsonify({'success': True, 'result': result})
+    except Exception as e:
+        logger.error(f"Error al procesar pago: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # Rutas para modo reposición
 @app.route('/api/restock/click', methods=['POST'])
 def process_screen_click():

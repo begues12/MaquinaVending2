@@ -804,6 +804,7 @@ class VendingMachineSimple {
             `;
             document.getElementById('contactless-pay-btn').disabled = true;
 
+            // 1. Solicitud de pago
             let paymentData = {
                 door_id: this.selectedDoor,
                 payment_method: 'contactless',
@@ -812,37 +813,64 @@ class VendingMachineSimple {
                 }
             };
 
-            const response = await fetch('/api/purchase', {
+            const purchaseResponse = await fetch('/api/purchase', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(paymentData)
             });
+            const purchaseResult = await purchaseResponse.json();
 
-            const result = await response.json();
-            
             // Cerrar modal de contactless
             bootstrap.Modal.getInstance(document.getElementById('contactlessModal')).hide();
-            
+
             // Mostrar modal de dispensando
             this.showDispensingModal();
 
-            // Si response es positivo enviar el open
-            if(result.success){
-                //Enviar open
-                const openResponse = await fetch(`/api/hardware/door/${this.selectedDoor}/open`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
+            // 2. Esperar confirmación de pago
+            if (purchaseResult.success && purchaseResult.payment_id) {
+                // Esperar a que el backend procese el pago
+                let paymentConfirmed = false;
+                let paymentError = null;
+                for (let i = 0; i < 20; i++) { // Espera hasta 20s máximo
+                    const paymentResponse = await fetch('/api/process_payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ payment_id: purchaseResult.payment_id })
+                    });
+                    const paymentResult = await paymentResponse.json();
+                    if (paymentResult.success) {
+                        paymentConfirmed = true;
+                        break;
+                    } else if (paymentResult.error) {
+                        paymentError = paymentResult.error;
+                        break;
                     }
-                });
-                const openResult = await openResponse.json();
-                if (openResult.success) {
-                    this.showSuccessResult(result);
-                } else {
-                    this.showErrorResult(openResult.error || 'Error al abrir la puerta');
+                    await new Promise(res => setTimeout(res, 1000));
                 }
+
+                if (paymentConfirmed) {
+                    // 3. Abrir puerta
+                    const openResponse = await fetch(`/api/hardware/door/${this.selectedDoor}/open`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    const openResult = await openResponse.json();
+                    if (openResult.success) {
+                        this.showSuccessResult(purchaseResult);
+                    } else {
+                        this.showErrorResult(openResult.error || 'Error al abrir la puerta');
+                    }
+                } else {
+                    this.showErrorResult(paymentError || 'Error al procesar el pago');
+                }
+            } else {
+                this.showErrorResult(purchaseResult.error || 'Error al iniciar el pago');
             }
 
         } catch (error) {
@@ -942,6 +970,7 @@ class VendingMachineSimple {
 
         console.log('Elementos encontrados, iniciando interval...');
 
+        // La puerta ya se ha abierto tras el pago OK, aquí solo gestionamos el cierre
         this.doorCountdownInterval = setInterval(() => {
             remainingSeconds--;
             console.log('Countdown:', remainingSeconds);
