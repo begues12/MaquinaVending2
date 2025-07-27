@@ -53,7 +53,7 @@ class GPIOController:
     def _init_gpiozero(self):
         """Inicializar GPIO usando gpiozero para Raspberry Pi"""
         try:
-            from gpiozero import LED, Button
+            from gpiozero import OutputDevice, Button
 
             # Cargar configuración de puertas
             door_pins, sensor_pins = self._load_door_config()
@@ -62,17 +62,16 @@ class GPIOController:
             for door_id, pin in door_pins.items():
                 try:
                     # Permitir lógica activa-bajo si el relé lo requiere
-                    # Puedes añadir 'active_high' en la config si lo necesitas
                     active_high = True
                     from machine_config import config_manager
                     door_config = config_manager.get_door(door_id)
                     if 'active_high' in door_config:
                         active_high = door_config['active_high']
-                    self.dispensers[door_id] = LED(pin, active_high=active_high)
+                    self.dispensers[door_id] = OutputDevice(pin, active_high=active_high, initial_value=False)
                     self.dispensers[door_id].off()  # Apagar relé al iniciar
-                    logger.info(f"Dispensador gpiozero configurado: {door_id} -> Pin {pin} (active_high={active_high})")
+                    logger.info(f"Dispensador OutputDevice configurado: {door_id} -> Pin {pin} (active_high={active_high})")
                 except Exception as e:
-                    logger.error(f"Error al configurar dispensador {door_id} en pin {pin}: {e}")
+                    logger.error(f"Error al configurar dispensador {door_id} en pin {pin}: {e} [{type(e).__name__}]")
 
             # Configurar sensores
             for door_id, pin in sensor_pins.items():
