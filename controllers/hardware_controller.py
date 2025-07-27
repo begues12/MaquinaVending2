@@ -284,9 +284,6 @@ class HardwareController:
             bool: True si la operación fue exitosa
         """
         try:
-            if not self.initialized:
-                self.logger.error("Hardware no inicializado")
-                return True
                 
             doors_config = self.config.get('doors', {})
             door_info = doors_config.get(door_id)
