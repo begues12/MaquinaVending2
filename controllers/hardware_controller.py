@@ -274,15 +274,16 @@ class HardwareController:
                 print(f"Puerta {door_id} no encontrada en configuración")
                 self.logger.error(f"Puerta {door_id} no encontrada en configuración")
                 return False
+            
             gpio_pin = door_info.get('gpio_pin')
         
-           
             if not gpio_pin:
                 print(f"Puerta {door_id} no tiene gpio_pin configurado")
                 self.logger.error(f"Puerta {door_id} no tiene gpio_pin configurado")
                 return False
 
             # Llama al array de puertas
+            print(self.door_relays)
             if door_id not in self.door_relays:
                 print(f"Relé no configurado para puerta {door_id}")
                 self.logger.error(f"Relé no configurado para puerta {door_id}")
