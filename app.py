@@ -74,6 +74,8 @@ def process_purchase():
     door_id         = data['door_id']
     payment_method  = data.get('payment_method', 'contactless')
 
+    
+    
     try:
         # Verificar que la puerta existe y obtener producto
         door_config = config_manager.get_door(door_id)
@@ -98,6 +100,7 @@ def process_purchase():
                 'success': True,
                 'payment_id': 'USB_SIMULADO_OK'
             }
+        
         # if payment_method == 'contactless':
         #     # Usar TPV para pago contactless
         #     payment_result = tpv_controller.process_contactless_payment(amount)
@@ -158,9 +161,14 @@ def process_purchase():
             # Error al dispensar - revertir venta
             db_manager.update_sale_status(sale_id, 'failed')
 
+            # Obtener el último error del logger de hardware_controller
+            import logging
+            hw_logger = logging.getLogger('controllers.hardware_controller')
+            # Si usas otro nombre de logger, ajusta aquí
+            # No se puede acceder directamente al último error, así que sugerimos revisar el log
             return jsonify({
                 'success'   : False,
-                'error'     : 'Error al dispensar producto. Contacte con soporte.',
+                'error'     : f'Error al dispensar producto en puerta {door_id}. Revisa el log para más detalles.',
                 'sale_id'   : sale_id
             }), 500
 
