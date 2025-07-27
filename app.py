@@ -81,19 +81,7 @@ def process_purchase():
             return jsonify({'success': False, 'error': 'Sin stock'}), 400
         if not product['active']:
             return jsonify({'success': False, 'error': 'Producto no disponible'}), 400
-        # Abrir relé
-        dispense_result = hardware_controller.open_door(door_id)
-        if dispense_result:
-            # Actualizar stock
-            db_manager.decrease_stock(door_id, 1)
-            db_manager.update_product(door_id, active=(product['stock']-1 > 0))
-            return jsonify({
-                'success': True,
-                'message': 'Producto dispensado correctamente',
-                'door_id': door_id,
-                'product': product['name'],
-                'remaining_stock': product['stock']-1
-            })
+
         else:
             return jsonify({'success': False, 'error': f'Error al abrir relé para puerta {door_id}'}), 500
     except Exception as e:

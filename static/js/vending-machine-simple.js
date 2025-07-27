@@ -829,14 +829,28 @@ class VendingMachineSimple {
             this.showDispensingModal();
             
             // Simular tiempo de dispensado
-            setTimeout(() => {
+            setTimeout(async () => {
                 bootstrap.Modal.getInstance(document.getElementById('dispensingModal')).hide();
-                
                 // Ocultar overlay de bloqueo
                 this.hideTPVBlockOverlay();
-                
                 if (result.success) {
-                    this.showSuccessResult(result);
+                    // Abrir la puerta solo si el pago fue exitoso
+                    try {
+                        const openResponse = await fetch(`/api/hardware/door/${this.selectedDoor}/open`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        const openResult = await openResponse.json();
+                        if (openResult.success) {
+                            this.showSuccessResult(result);
+                        } else {
+                            this.showErrorResult(openResult.error || 'Error al abrir la puerta');
+                        }
+                    } catch (err) {
+                        this.showErrorResult('Error de comunicación al abrir la puerta');
+                    }
                     this.updateDoorAfterPurchase(this.selectedDoor, result);
                 } else {
                     this.showErrorResult(result.error);
