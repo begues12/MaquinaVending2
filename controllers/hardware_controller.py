@@ -294,8 +294,11 @@ class HardwareController:
                 
                 self.logger.info(f"Relé matriz activado para puerta {door_id} (pin {gpio_pin}, índice {relay_index})")
                 # Activar relé específico en matriz
-                
-    
+        
+        except Exception as e:
+            self.logger.error(f"Error abriendo puerta {door_id}: {e}")
+            return False
+        
     def _activate_relay_simple(self, gpio_pin: int, door_id: str) -> bool:
         """Activar un relé simple (un pin, un relé) usando gpiozero OutputDevice"""
         try:
