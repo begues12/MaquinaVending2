@@ -832,15 +832,3 @@ def start_app():
         logger.error(f"Error al iniciar la aplicación: {e}")
     finally:
         logger.info("Aplicación cerrada")
-
-if __name__ == '__main__':
-    if Config.PLATFORM == 'windows':
-        start_app()
-    else:
-        # En Raspberry Pi, ejecutar Flask directamente
-        app.run(
-            host=Config.HOST,
-            port=Config.PORT,
-            debug=True,
-            use_reloader=False
-        )

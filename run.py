@@ -66,7 +66,8 @@ def main():
             app.run(
                 host=Config.HOST,
                 port=Config.PORT,
-                debug=Config.FLASK_ENV == 'development'
+                debug=Config.FLASK_ENV == 'development',
+                use_reloader=False
             )
             
     except KeyboardInterrupt:
