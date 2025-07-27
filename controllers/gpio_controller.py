@@ -75,15 +75,6 @@ class GPIOController:
                     logger.error(f"Error al configurar dispensador {door_id} en pin {pin}: {e} [{type(e).__name__}]")
                     error_detected = True
 
-            # Configurar sensores
-            for door_id, pin in sensor_pins.items():
-                try:
-                    self.sensors[door_id] = Button(pin)
-                    logger.info(f"Sensor gpiozero configurado: {door_id} -> Pin {pin}")
-                except Exception as e:
-                    logger.error(f"Error al configurar sensor {door_id} en pin {pin}: {e}")
-                    error_detected = True
-
             if error_detected:
                 self.hardware_initialized = False
                 logger.error("Hardware no inicializado correctamente: revisa los errores anteriores en el log.")
