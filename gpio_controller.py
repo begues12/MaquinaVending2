@@ -245,5 +245,3 @@ class MockGPIOPin:
         }
 
 
-# Instancia global del controlador GPIO
-gpio_controller = GPIOController()

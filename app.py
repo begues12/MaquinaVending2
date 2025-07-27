@@ -8,7 +8,6 @@ from flask_cors import CORS
 from config import Config
 from database import db_manager
 from controllers.payment_system import payment_processor
-from controllers.gpio_controller import gpio_controller
 from machine_config import config_manager
 from controllers.tpv_controller import TPVController
 from controllers.restock_controller import restock_controller

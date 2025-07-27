@@ -286,6 +286,13 @@ class HardwareController:
                 self.logger.error(f"Puerta {door_id} no tiene gpio_pin configurado")
                 return False
             
+            # Cierra el pin antes
+            if GPIO_AVAILABLE:
+                GPIO.setup(gpio_pin, GPIO.OUT)
+                GPIO.output(gpio_pin, GPIO.LOW)  # Asegurarse que el relé está apagado antes de activar
+            else:
+                print(f"SIMULACIÓN: Abriendo puerta {door_id} en pin {gpio_pin} (índice {relay_index})")
+            
             rele = OutputDevice(gpio_pin, active_high=True, initial_value=False)
             rele.on()
                 
@@ -295,30 +302,7 @@ class HardwareController:
         except Exception as e:
             self.logger.error(f"Error abriendo puerta {door_id}: {e}")
             return False
-        
-    def _activate_relay_simple(self, gpio_pin: int, door_id: str) -> bool:
-        """Activar un relé simple (un pin, un relé) usando gpiozero OutputDevice"""
-        try:
-            if GPIO_AVAILABLE:
-                try:
-                    from gpiozero import OutputDevice
-                except ImportError:
-                    self.logger.error("gpiozero no está disponible en el entorno actual.")
-                    return False
-                # Activar el relé usando OutputDevice
-                try:
-                    # Se puede guardar la instancia si se requiere desactivar luego
-                    rele = OutputDevice(gpio_pin, active_high=True, initial_value=True)
-                    self.logger.info(f"Relé simple puerta {door_id} activado con gpiozero OutputDevice en pin {gpio_pin}")
-                except Exception as e:
-                    self.logger.error(f"Error activando OutputDevice en pin {gpio_pin}: {str(e)}")
-                    return False
-            else:
-                print(f"SIMULACIÓN: Activando relé simple puerta {door_id} en pin {gpio_pin}")
-            return True
-        except Exception as e:
-            self.logger.error(f"Error activando relé simple {door_id}: {str(e)}")
-            return False
+
     
     def _activate_relay_matrix(self, gpio_pin: int, relay_index: int, door_id: str) -> bool:
         """
