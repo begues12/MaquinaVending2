@@ -90,7 +90,6 @@ class HardwareController:
         self.sensor_debounce = 200  # Milisegundos de rebote para sensores
         # Estado de inicialización
         self.initialized = False
-        self._initialize_gpio()
         
     def _load_config(self) -> dict:
         """Cargar configuración desde archivo JSON"""
@@ -563,3 +562,7 @@ class HardwareController:
     def __del__(self):
         """Destructor - limpiar recursos"""
         self.cleanup()
+
+# Instancia global del controlador
+hardware_controller = HardwareController()
+hardware_controller._initialize_gpio()
