@@ -122,11 +122,16 @@ class HardwareController:
                     'last_closed': None
                 }
                 gpio_pin = door_info.get('gpio_pin')
-                if gpio_pin:
+                if gpio_pin is not None:
                     try:
-                        self.door_relays[door_id] = OutputDevice(gpio_pin, active_high=False, initial_value=False)
+                        # Usa active_high=True para la mayoría de relés
+                        self.door_relays[door_id] = OutputDevice(gpio_pin, active_high=True, initial_value=False)
+                        self.door_relays[door_id].off()  # Asegurarse de que el relé esté apagado al iniciar
+                        self.logger.info(f"OutputDevice creado para puerta {door_id} en pin {gpio_pin}")
                     except Exception as e:
                         self.logger.error(f"Error creando OutputDevice para puerta {door_id} en pin {gpio_pin}: {e}")
+                else:
+                    self.logger.warning(f"Puerta {door_id} no tiene gpio_pin configurado, no se crea OutputDevice")
             # Verificar pines duplicados
             used_pins = set()
             duplicate_pins = set()
