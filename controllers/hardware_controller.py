@@ -287,14 +287,7 @@ class HardwareController:
                 print(f"Puerta {door_id} no tiene gpio_pin configurado")
                 self.logger.error(f"Puerta {door_id} no tiene gpio_pin configurado")
                 return False
-            
-            # Cierra el pin antes
-            if GPIO_AVAILABLE:
-                GPIO.setup(gpio_pin, GPIO.OUT)
-                GPIO.output(gpio_pin, GPIO.LOW)  # Asegurarse que el relé está apagado antes de activar
-            else:
-                print(f"SIMULACIÓN: Abriendo puerta {door_id} en pin {gpio_pin} (índice {relay_index})")
-            
+    
             rele = OutputDevice(gpio_pin, active_high=True, initial_value=False)
             rele.on()
                 
