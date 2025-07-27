@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict, Optional, List, Any
 from machine_config import config_manager
 from database import db_manager
-from hardware_controller import hardware_controller
+from controllers.hardware_controller import hardware_controller
 
 logger = logging.getLogger(__name__)
 
