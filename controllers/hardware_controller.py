@@ -124,7 +124,7 @@ class HardwareController:
                 gpio_pin = door_info.get('gpio_pin')
                 if gpio_pin:
                     try:
-                        self.door_relays[door_id] = OutputDevice(gpio_pin, active_high=True, initial_value=False)
+                        self.door_relays[door_id] = OutputDevice(gpio_pin, active_high=False, initial_value=False)
                     except Exception as e:
                         self.logger.error(f"Error creando OutputDevice para puerta {door_id} en pin {gpio_pin}: {e}")
             # Verificar pines duplicados
