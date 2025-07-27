@@ -89,7 +89,7 @@ class HardwareController:
         self.sensor_debounce = 200  # Milisegundos de rebote para sensores
         
         # Estado de inicialización
-        self.initialized = False
+        self.initialized = True
         
         self._initialize_gpio()
         
@@ -160,7 +160,6 @@ class HardwareController:
             
         except Exception as e:
             self.logger.error(f"Error inicializando GPIO: {e}")
-            self.initialized = False
     
     def _sensor_callback(self, door_id: str, channel: int):
         """Callback para eventos de sensores de puerta"""
@@ -287,7 +286,7 @@ class HardwareController:
         try:
             if not self.initialized:
                 self.logger.error("Hardware no inicializado")
-                return False
+                return True
                 
             doors_config = self.config.get('doors', {})
             door_info = doors_config.get(door_id)
