@@ -52,7 +52,7 @@
         "row": 1,
         "col": 1
       },
-      "gpio_pin": 18,
+      "gpio_pin": 17,
       "sensor_pin": 17,
       "relay_matrix": false,
       "relay_index": 0,
