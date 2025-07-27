@@ -22,10 +22,7 @@ class GPIOController:
         self.sensors = {}
 
         # Preferir gpiozero en Raspberry Pi
-        if self.platform == 'raspberry' and self.gpio_enabled:
-            self._init_gpiozero()
-        else:
-            self._init_windows_simulation()
+        self._init_gpiozero()
     
     def _load_door_config(self) -> tuple[Dict[str, int], Dict[str, int]]:
         """Cargar configuración de puertas desde JSON
