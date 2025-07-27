@@ -112,6 +112,8 @@ class HardwareController:
     def _initialize_gpio(self):
         """Inicializar configuración de GPIO y crear OutputDevice por puerta"""
         try:
+            self.cleanup()
+            
             doors_config = self.config.get('doors', {})
             self.logger.info(f"Puertas cargadas desde config: {list(doors_config.keys())}")
             for door_id, door_info in doors_config.items():
