@@ -265,75 +265,36 @@ class HardwareController:
 
     def open_door(self, door_id: str) -> bool:
         """
-        Activar relé para abrir una puerta específica
+        Activar relé para abrir una puerta específica usando gpiozero OutputDevice
         Soporta matrices de relés con índices
         
         Args:
             door_id: ID de la puerta a abrir (ej: 'A1', 'B2')
-            
         Returns:
             bool: True si la operación fue exitosa
         """
         try:
-                
             doors_config = self.config.get('doors', {})
             door_info = doors_config.get(door_id)
-            
             if not door_info:
                 self.logger.error(f"Puerta {door_id} no encontrada en configuración")
                 return False
-                
             gpio_pin = door_info.get('gpio_pin')
-            relay_index = door_info.get('relay_index', 0)  # Índice dentro de la matriz
-            relay_matrix = door_info.get('relay_matrix', False)  # Si es matriz de relés
-            
+            relay_index = door_info.get('relay_index', 0)
+            relay_matrix = door_info.get('relay_matrix', False)
+           
             if not gpio_pin:
-                self.logger.error(f"Pin GPIO no configurado para puerta {door_id}")
+                self.logger.error(f"Puerta {door_id} no tiene gpio_pin configurado")
                 return False
             
-            # Inicializar estado de puerta si no existe
-            if door_id not in self.door_states:
-                self.door_states[door_id] = {
-                    'is_open': False,
-                    'relay_active': False,
-                    'last_opened': None,
-                    'last_closed': None
-                }
+            rele = OutputDevice(gpio_pin, active_high=True, initial_value=False)
             
-            # Verificar si la puerta ya está en proceso de apertura
-            if self.door_states.get(door_id, {}).get('relay_active', False):
-                self.logger.warning(f"Puerta {door_id} ya está en proceso de apertura")
-                return False
-            
-            # Activar relé (simple o matriz)
             if relay_matrix:
-                self.logger.info(f"Activando relé matriz para puerta {door_id} (pin {gpio_pin}, índice {relay_index})")
-                success = self._activate_relay_matrix(gpio_pin, relay_index, door_id)
-            else:
-                self.logger.info(f"Activando relé simple para puerta {door_id} (pin {gpio_pin})")
-                success = self._activate_relay_simple(gpio_pin, door_id)
-            
-            if not success:
-                return False
-            
-            # Marcar relé como activo
-            self.door_states[door_id]['relay_active'] = True
-            self.door_states[door_id]['last_opened'] = time.time()
-            
-            # Obtener tiempo de apertura específico para esta puerta
-            door_open_time = self.get_door_open_time(door_id)
-            
-            # Programar desactivación del relé con el tiempo específico
-            timer = threading.Timer(door_open_time, self._deactivate_relay, args=[door_id, gpio_pin, relay_index, relay_matrix])
-            timer.start()
-            self.door_timers[door_id] = timer
-            
-            self.logger.info(f"Relé de puerta {door_id} activado exitosamente por {door_open_time}s")
-            return True
-            
-        except Exception as e:
-            self.logger.error(f"Error abriendo puerta {door_id}: {str(e)}")
-            return False
+                rele.on()
+                
+                self.logger.info(f"Relé matriz activado para puerta {door_id} (pin {gpio_pin}, índice {relay_index})")
+                # Activar relé específico en matriz
+                
     
     def _activate_relay_simple(self, gpio_pin: int, door_id: str) -> bool:
         """Activar un relé simple (un pin, un relé) usando gpiozero OutputDevice"""
