@@ -90,6 +90,8 @@ class HardwareController:
         self.sensor_debounce = 200  # Milisegundos de rebote para sensores
         # Estado de inicialización
         self.initialized = False
+        # Inicializar GPIO y relés al crear la instancia
+        self._initialize_gpio()
         
     def _load_config(self) -> dict:
         """Cargar configuración desde archivo JSON"""
