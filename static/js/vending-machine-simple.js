@@ -908,13 +908,13 @@ class VendingMachineSimple {
         }
         
         // Iniciar countdown
-        this.startDoorCountdown(openTimeSeconds);
+        this.startDoorCountdown(doorId, openTimeSeconds);
         
         console.log(`Mostrando salvapantallas de puerta abierta para ${doorId} por ${openTimeSeconds} segundos`);
     }
 
     // Iniciar countdown de puerta abierta
-    startDoorCountdown(totalSeconds) {
+    startDoorCountdown(doorId, totalSeconds) {
         console.log('Iniciando countdown con', totalSeconds, 'segundos');
         
         // Limpiar countdown previo si existe
@@ -940,6 +940,21 @@ class VendingMachineSimple {
         progressBar.style.width = '100%';
         progressBar.style.background = '#0d6efd';
 
+        // Llamada para abrir la puerta en el backend al iniciar countdown
+        fetch(`/api/hardware/door/${doorId}/open`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (!response.ok) {
+                console.error('Error al abrir la puerta:', response.statusText);
+            } else {
+                console.log('Puerta abierta correctamente');
+            }
+        }).catch(error => {
+            console.error('Error de red al abrir la puerta:', error);
+        });
 
         console.log('Elementos encontrados, iniciando interval...');
 
@@ -969,23 +984,23 @@ class VendingMachineSimple {
                 clearInterval(this.doorCountdownInterval);
                 this.doorCountdownInterval = null;
                 // Llamada para cerrar la puerta en el backend
-                if (this.selectedDoor) {
-                    fetch(`/api/hardware/door/${this.selectedDoor}/close`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Puerta cerrada:', data);
-                    })
-                    .catch(error => {
-                        console.error('Error al cerrar la puerta:', error);
-                    });
-                }
+                fetch(`/api/hardware/door/${doorId}/close`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => {
+                    if (!response.ok) {
+                        console.error('Error al cerrar la puerta:', response.statusText);
+                    } else {
+                        console.log('Puerta cerrada correctamente');
+                    }
+                }).catch(error => {
+                    console.error('Error de red al cerrar la puerta:', error);
+                });
+
                 this.hideDoorOpenScreensaver();
-                
+
                 // Mostrar salvapantallas de agradecimiento breve
                 setTimeout(() => {
                     this.showBriefThankYou();
