@@ -146,6 +146,14 @@ class HardwareController:
     def _initialize_gpio(self):
         """Inicializar configuración de GPIO y crear OutputDevice por puerta"""
         try:
+            # Configurar modo y warnings de GPIO antes de cualquier uso
+            if GPIO_AVAILABLE:
+                try:
+                    GPIO.setmode(GPIO.BCM)
+                    GPIO.setwarnings(False)
+                except Exception as e:
+                    self.logger.warning(f"Error configurando modo/warnings GPIO: {e}")
+
             # Limpiar todos los OutputDevice previos
             for rel in self.door_relays.values():
                 try:
