@@ -951,9 +951,26 @@ class VendingMachineSimple {
         timerElement.textContent = remainingSeconds;
         progressBar.style.width = '100%';
         progressBar.style.background = '#0d6efd';
-        
+
+        // Abrir la puerta al iniciar el countdown
+        if (this.selectedDoor) {
+            fetch(`/api/hardware/door/${this.selectedDoor}/open`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Puerta abierta:', data);
+            })
+            .catch(error => {
+                console.error('Error al abrir la puerta:', error);
+            });
+        }
+
         console.log('Elementos encontrados, iniciando interval...');
-        
+
         this.doorCountdownInterval = setInterval(() => {
             remainingSeconds--;
             console.log('Countdown:', remainingSeconds);
