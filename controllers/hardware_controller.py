@@ -133,10 +133,12 @@ class HardwareController:
                     'last_closed': None
                 }
                 gpio_pin = door_info.get('gpio_pin')
+                # Permitir configurar active_high por puerta, por defecto False (relé desactivado al iniciar)
+                active_high = door_info.get('active_high', False)
                 if gpio_pin is not None:
                     try:
-                        self.logger.info(f"Creando OutputDevice para puerta {door_id} en pin {gpio_pin}")
-                        self.door_relays[door_id] = OutputDevice(gpio_pin, active_high=True, initial_value=False)
+                        self.logger.info(f"Creando OutputDevice para puerta {door_id} en pin {gpio_pin} (active_high={active_high})")
+                        self.door_relays[door_id] = OutputDevice(gpio_pin, active_high=active_high, initial_value=False)
                         self.door_relays[door_id].off()
                         self.logger.info(f"OutputDevice creado y apagado para puerta {door_id} en pin {gpio_pin}")
                     except Exception as e:
@@ -303,7 +305,6 @@ class HardwareController:
                 return False
 
             # Llama al array de puertas
-            print(self.door_relays)
             if door_id not in self.door_relays:
                 print(f"Relé no configurado para puerta {door_id}")
                 self.logger.error(f"Relé no configurado para puerta {door_id}")
