@@ -536,20 +536,39 @@ class HardwareController:
         # ...existing code...
     
     def cleanup(self):
-        """Limpiar recursos GPIO"""
+        """Limpiar todos los recursos: timers, OutputDevice, GPIO, y diccionarios internos"""
         try:
             # Cancelar todos los timers
             for timer in self.door_timers.values():
-                timer.cancel()
+                try:
+                    timer.cancel()
+                except Exception as e:
+                    self.logger.warning(f"Error cancelando timer: {e}")
             self.door_timers.clear()
-            
-            # Limpiar GPIO
-            if GPIO_AVAILABLE:
-                GPIO.cleanup()
-                
-            self.logger.info("Limpieza de GPIO completada")
-            
+
+            # Cerrar todos los OutputDevice
+            for rel in self.door_relays.values():
+                try:
+                    rel.close()
+                except Exception as e:
+                    self.logger.warning(f"Error cerrando OutputDevice: {e}")
+            self.door_relays.clear()
+
+            # Limpiar estados y callbacks
+            self.door_states.clear()
+            self.door_callbacks.clear()
+
+            # Limpiar recursos de gpiozero (OutputDevice)
+            try:
+                for rel in self.door_relays.values():
+                    if hasattr(rel, 'close'):
+                        rel.close()
+            except Exception as e:
+                self.logger.warning(f"Error cerrando OutputDevice (gpiozero): {e}")
+
+            self.logger.info("Limpieza de todos los recursos de hardware completada")
         except Exception as e:
+            self.logger.error(f"Error en limpieza: {e}")
             self.logger.error(f"Error en limpieza: {e}")
     
     def __del__(self):
