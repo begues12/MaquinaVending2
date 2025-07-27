@@ -416,59 +416,6 @@ class HardwareController:
         except Exception as e:
             self.logger.error(f"Error desactivando relé matriz {door_id}: {str(e)}")
     
-    def open_door(self, door_id: str) -> bool:
-        """
-        Activar relé para abrir una puerta específica usando OutputDevice
-        Args:
-            door_id: ID de la puerta a abrir (ej: 'A1', 'B2')
-        Returns:
-            bool: True si la operación fue exitosa
-        """
-        try:
-            doors_config = self.config.get('doors', {})
-            door_info = doors_config.get(door_id)
-            if not door_info:
-                self.logger.error(f"Puerta {door_id} no encontrada en configuración")
-                return False
-            gpio_pin = door_info.get('gpio_pin')
-            if not gpio_pin:
-                self.logger.error(f"Puerta {door_id} no tiene gpio_pin configurado")
-                return False
-            if door_id not in self.door_relays:
-                self.logger.error(f"No se encontró OutputDevice para puerta {door_id} (pin {gpio_pin})")
-                return False
-            rele = self.door_relays[door_id]
-            if not rele:
-                self.logger.error(f"OutputDevice para puerta {door_id} es None")
-                return False
-            try:
-                rele.on()
-                self.logger.info(f"Relé activado para puerta {door_id} (pin {gpio_pin})")
-                return True
-            except Exception as e:
-                self.logger.error(f"Error activando relé OutputDevice para puerta {door_id} (pin {gpio_pin}): {e}")
-                return False
-        except Exception as e:
-            self.logger.error(f"Error general abriendo puerta {door_id}: {e}")
-            return False
-            if door_info.get('gpio_pin') == gpio_pin:
-                matrix_doors.append({
-                    'door_id': door_id,
-                    'relay_index': door_info.get('relay_index', 0),
-                    'is_matrix': door_info.get('relay_matrix', False)
-                })
-        
-        # Ordenar por índice de relé
-        matrix_doors.sort(key=lambda x: x['relay_index'])
-        
-        return {
-            'gpio_pin': gpio_pin,
-            'doors': matrix_doors,
-            'total_relays': len([d for d in matrix_doors if d['is_matrix']]) + 1,
-            'simple_relays': len([d for d in matrix_doors if not d['is_matrix']]),
-            'matrix_relays': len([d for d in matrix_doors if d['is_matrix']])
-        }
-    
     def get_all_doors_state(self) -> Dict[str, Dict]:
         """Obtener estado de todas las puertas"""
         states = {}
