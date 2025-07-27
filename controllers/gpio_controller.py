@@ -74,7 +74,7 @@ class GPIOController:
                     from machine_config import config_manager
                     door_config = config_manager.get_door(door_id)
                     # Si la config tiene active_high, úsalo; si no, por defecto True
-                    active_high = door_config.get('active_high', True)
+                    active_high = door_config.get('active_high', False)
                     self.dispensers[door_id] = OutputDevice(pin, active_high=active_high, initial_value=False)
                     self.dispensers[door_id].off()  # Apagar relé al iniciar
                     logger.info(f"Dispensador OutputDevice configurado: {door_id} -> Pin {pin} (active_high={active_high})")
