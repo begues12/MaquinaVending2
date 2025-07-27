@@ -125,8 +125,10 @@ class HardwareController:
                 if gpio_pin is not None:
                     try:
                         # Usa active_high=True para la mayoría de relés
+                        print(f"Creando OutputDevice para puerta {door_id} en pin {gpio_pin}")
                         self.door_relays[door_id] = OutputDevice(gpio_pin, active_high=True, initial_value=False)
                         self.door_relays[door_id].off()  # Asegurarse de que el relé esté apagado al iniciar
+                        print(f"Apagando relé para puerta {door_id} en pin {gpio_pin}")                        
                         self.logger.info(f"OutputDevice creado para puerta {door_id} en pin {gpio_pin}")
                     except Exception as e:
                         self.logger.error(f"Error creando OutputDevice para puerta {door_id} en pin {gpio_pin}: {e}")
