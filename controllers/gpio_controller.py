@@ -54,13 +54,7 @@ class GPIOController:
     def _init_gpiozero(self):
         """Inicializar GPIO usando gpiozero para Raspberry Pi"""
         try:
-            from gpiozero import OutputDevice, Button, Device
-            # Limpieza forzada de recursos GPIO antes de inicializar
-            try:
-                Device.close()
-                logger.info("GPIODevice: Limpieza forzada antes de inicializar OutputDevice.")
-            except Exception as e:
-                logger.warning(f"No se pudo limpiar GPIODevice antes de inicializar: {e}")
+            from gpiozero import OutputDevice, Button
 
             # Cargar configuración de puertas
             door_pins, sensor_pins = self._load_door_config()
@@ -70,11 +64,10 @@ class GPIOController:
             # Configurar dispensadores
             for door_id, pin in door_pins.items():
                 try:
-                    # Permitir lógica activa-bajo si el relé lo requiere
                     from machine_config import config_manager
                     door_config = config_manager.get_door(door_id)
                     # Si la config tiene active_high, úsalo; si no, por defecto True
-                    active_high = door_config.get('active_high', False)
+                    active_high = door_config.get('active_high', True)
                     self.dispensers[door_id] = OutputDevice(pin, active_high=active_high, initial_value=False)
                     self.dispensers[door_id].off()  # Apagar relé al iniciar
                     logger.info(f"Dispensador OutputDevice configurado: {door_id} -> Pin {pin} (active_high={active_high})")
