@@ -294,6 +294,7 @@ class HardwareController:
                 
                 self.logger.info(f"Relé matriz activado para puerta {door_id} (pin {gpio_pin}, índice {relay_index})")
                 # Activar relé específico en matriz
+            return True
         
         except Exception as e:
             self.logger.error(f"Error abriendo puerta {door_id}: {e}")
