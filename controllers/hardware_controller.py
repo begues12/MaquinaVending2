@@ -113,6 +113,9 @@ class HardwareController:
         """Inicializar configuración de GPIO y crear OutputDevice por puerta"""
         try:
             doors_config = self.config.get('doors', {})
+            self.logger.info(f"Puertas cargadas desde config: {list(doors_config.keys())}")
+            for door_id, door_info in doors_config.items():
+                self.logger.info(f"Puerta {door_id} -> gpio_pin: {door_info.get('gpio_pin')}")
             # Inicializar estados de puertas y relés
             for door_id, door_info in doors_config.items():
                 self.door_states[door_id] = {
@@ -124,12 +127,10 @@ class HardwareController:
                 gpio_pin = door_info.get('gpio_pin')
                 if gpio_pin is not None:
                     try:
-                        # Usa active_high=True para la mayoría de relés
-                        print(f"Creando OutputDevice para puerta {door_id} en pin {gpio_pin}")
+                        self.logger.info(f"Creando OutputDevice para puerta {door_id} en pin {gpio_pin}")
                         self.door_relays[door_id] = OutputDevice(gpio_pin, active_high=True, initial_value=False)
-                        self.door_relays[door_id].off()  # Asegurarse de que el relé esté apagado al iniciar
-                        print(f"Apagando relé para puerta {door_id} en pin {gpio_pin}")                        
-                        self.logger.info(f"OutputDevice creado para puerta {door_id} en pin {gpio_pin}")
+                        self.door_relays[door_id].off()
+                        self.logger.info(f"OutputDevice creado y apagado para puerta {door_id} en pin {gpio_pin}")
                     except Exception as e:
                         self.logger.error(f"Error creando OutputDevice para puerta {door_id} en pin {gpio_pin}: {e}")
                 else:
