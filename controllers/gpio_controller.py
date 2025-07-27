@@ -53,7 +53,13 @@ class GPIOController:
     def _init_gpiozero(self):
         """Inicializar GPIO usando gpiozero para Raspberry Pi"""
         try:
-            from gpiozero import OutputDevice, Button
+            from gpiozero import OutputDevice, Button, Device
+            # Limpieza forzada de recursos GPIO antes de inicializar
+            try:
+                Device.close()
+                logger.info("GPIODevice: Limpieza forzada antes de inicializar OutputDevice.")
+            except Exception as e:
+                logger.warning(f"No se pudo limpiar GPIODevice antes de inicializar: {e}")
 
             # Cargar configuración de puertas
             door_pins, sensor_pins = self._load_door_config()
