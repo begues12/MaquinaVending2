@@ -277,12 +277,14 @@ class HardwareController:
             doors_config = self.config.get('doors', {})
             door_info = doors_config.get(door_id)
             if not door_info:
+                print(f"Puerta {door_id} no encontrada en configuración")
                 self.logger.error(f"Puerta {door_id} no encontrada en configuración")
                 return False
             gpio_pin = door_info.get('gpio_pin')
             relay_index = door_info.get('relay_index', 0)
            
             if not gpio_pin:
+                print(f"Puerta {door_id} no tiene gpio_pin configurado")
                 self.logger.error(f"Puerta {door_id} no tiene gpio_pin configurado")
                 return False
             
@@ -300,6 +302,7 @@ class HardwareController:
             return True
         
         except Exception as e:
+            print(f"Error abriendo puerta {door_id}: {e}")
             self.logger.error(f"Error abriendo puerta {door_id}: {e}")
             return False
 
