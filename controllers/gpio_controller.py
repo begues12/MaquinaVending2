@@ -19,54 +19,37 @@ class GPIOController:
         self.gpio_enabled = Config.GPIO_ENABLED
         self.pins_status = {}
         self.dispensers = {}
-        self.sensors = {}
         self.hardware_initialized = False
-
         # Preferir gpiozero en Raspberry Pi
         self._init_gpiozero()
     
-    def _load_door_config(self) -> tuple[Dict[str, int], Dict[str, int]]:
-        """Cargar configuración de puertas desde JSON
-        
-        Returns:
-            tuple: (door_pins, sensor_pins) diccionarios con door_id -> pin
-        """
+    def _load_door_config(self) -> Dict[str, int]:
+        """Cargar configuración de puertas desde JSON (solo dispensadores)"""
         try:
             from machine_config import config_manager
             doors = config_manager.get_doors()
-            
             door_pins = {}
-            sensor_pins = {}
-            
             for door_id, door_config in doors.items():
                 if 'gpio_pin' in door_config:
                     door_pins[door_id] = door_config['gpio_pin']
-                if 'sensor_pin' in door_config:
-                    sensor_pins[door_id] = door_config['sensor_pin']
-            
-            logger.info(f"Configuración cargada: {len(door_pins)} dispensadores, {len(sensor_pins)} sensores")
-            return door_pins, sensor_pins
-            
+            logger.info(f"Configuración cargada: {len(door_pins)} dispensadores")
+            return door_pins
         except Exception as e:
             logger.error(f"Error al cargar configuración de puertas: {e}")
-            return {}, {}
+            return {}
     
     def _init_gpiozero(self):
-        """Inicializar GPIO usando gpiozero para Raspberry Pi"""
+        """Inicializar GPIO usando gpiozero para Raspberry Pi (solo dispensadores)"""
         try:
-            from gpiozero import OutputDevice, Button
-
+            from gpiozero import OutputDevice
             # Cargar configuración de puertas
-            door_pins, sensor_pins = self._load_door_config()
-
+            door_pins = self._load_door_config()
             error_detected = False
-
             # Configurar dispensadores
             for door_id, pin in door_pins.items():
                 try:
                     from machine_config import config_manager
                     door_config = config_manager.get_door(door_id)
-                    # Si la config tiene active_high, úsalo; si no, por defecto True
                     active_high = door_config.get('active_high', True)
                     self.dispensers[door_id] = OutputDevice(pin, active_high=active_high, initial_value=False)
                     self.dispensers[door_id].off()  # Apagar relé al iniciar
@@ -74,7 +57,6 @@ class GPIOController:
                 except Exception as e:
                     logger.error(f"Error al configurar dispensador {door_id} en pin {pin}: {e} [{type(e).__name__}]")
                     error_detected = True
-
             if error_detected:
                 self.hardware_initialized = False
                 logger.error("Hardware no inicializado correctamente: revisa los errores anteriores en el log.")
@@ -87,20 +69,11 @@ class GPIOController:
             self._init_windows_simulation()
     
     def _init_windows_simulation(self):
-        """Inicializar simulación para Windows"""
-        # Cargar configuración de puertas
-        door_pins, sensor_pins = self._load_door_config()
-        
-        # Crear dispensadores simulados
+        """Inicializar simulación para Windows (solo dispensadores)"""
+        door_pins = self._load_door_config()
         for door_id, pin in door_pins.items():
             self.dispensers[door_id] = MockGPIOPin(f'LED_{pin}')
             logger.info(f"Dispensador simulado configurado: {door_id} -> Pin {pin}")
-        
-        # Crear sensores simulados
-        for door_id, pin in sensor_pins.items():
-            self.sensors[door_id] = MockGPIOPin(f'BUTTON_{pin}')
-            logger.info(f"Sensor simulado configurado: {door_id} -> Pin {pin}")
-        
         logger.info("Modo simulación GPIO inicializado (Windows)")
     
     def dispense_product(self, door_id: str) -> bool:
@@ -134,54 +107,20 @@ class GPIOController:
             logger.error(f"Error al dispensar producto de la puerta {door_id}: {e}")
             return False
     
-    def read_sensor(self, door_id: str) -> bool:
-        """Leer estado de un sensor de puerta
-        Args:
-            door_id: Identificador de la puerta
-        Returns:
-            bool: Estado del sensor (True = activado)
-        """
-        try:
-            if door_id not in self.sensors:
-                logger.warning(f"Sensor no encontrado para puerta: {door_id}")
-                return False
-
-            sensor = self.sensors[door_id]
-
-            if self.platform == 'raspberry' and self.gpio_enabled:
-                return sensor.is_pressed
-            else:
-                # Simulación
-                return sensor.read()
-
-        except Exception as e:
-            logger.error(f"Error al leer sensor de puerta {door_id}: {e}")
-            return False
+    # Método de sensor eliminado: los sensores no deben funcionar
     
     def get_pins_status(self) -> Dict[str, Any]:
-        """Obtener estado actual de todos los pines
-        
-        Returns:
-            dict: Estado completo del sistema GPIO
-        """
+        """Obtener estado actual de todos los pines (solo dispensadores)"""
         status = {
             'platform': self.platform,
             'gpio_enabled': self.gpio_enabled,
-            'dispensers': {},
-            'sensors': {}
+            'dispensers': {}
         }
-        
-        # Estado de dispensadores
         for door_id, dispenser in self.dispensers.items():
             if hasattr(dispenser, 'get_status'):
                 status['dispensers'][door_id] = dispenser.get_status()
             else:
                 status['dispensers'][door_id] = {'door_id': door_id, 'available': True}
-        
-        # Estado de sensores
-        for door_id in self.sensors.keys():
-            status['sensors'][door_id] = self.read_sensor(door_id)
-        
         return status
     
     def cleanup(self):
