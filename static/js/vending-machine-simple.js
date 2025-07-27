@@ -970,7 +970,7 @@ class VendingMachineSimple {
                 this.doorCountdownInterval = null;
                 // Llamada para cerrar la puerta en el backend
                 if (this.selectedDoor) {
-                    fetch(`/api/door/close/${this.selectedDoor}`, {
+                    fetch(`/api/hardware/door/${this.selectedDoor}/close`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
