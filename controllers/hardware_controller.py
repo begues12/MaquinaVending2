@@ -167,6 +167,8 @@ class HardwareController:
                 status[door_id] = None
         return status
     
+    
+    
     def _sensor_callback(self, door_id: str, channel: int):
         """Callback para eventos de sensores de puerta"""
         try:
@@ -310,29 +312,6 @@ class HardwareController:
             print(f"Relé activado para puerta {door_id} (pin {gpio_pin})")
             self.logger.info(f"Relé activado para puerta {door_id} (pin {gpio_pin})")
 
-            # Obtener tiempo de apertura
-            open_time = self.get_door_open_time(door_id)
-            self.logger.info(f"Temporizador para puerta {door_id}: {open_time}s")
-
-            # Si ya hay un timer, cancelarlo
-            if door_id in self.door_timers:
-                try:
-                    self.door_timers[door_id].cancel()
-                except Exception:
-                    pass
-
-            # Crear timer para cerrar el relé
-            def close_relay():
-                try:
-                    rele.off()
-                    self.logger.info(f"Relé desactivado automáticamente para puerta {door_id} (pin {gpio_pin})")
-                except Exception as e:
-                    self.logger.error(f"Error desactivando relé {door_id}: {e}")
-
-            timer = threading.Timer(open_time, close_relay)
-            timer.daemon = True
-            self.door_timers[door_id] = timer
-            timer.start()
 
             return True
         except Exception as e:
@@ -340,6 +319,33 @@ class HardwareController:
             self.logger.error(f"Error abriendo puerta {door_id}: {e}")
             return False
 
+    def close_door(self, door_id: str) -> bool:
+        """
+        Cerrar una puerta específica, desactivando el relé y actualizando el estado
+        """
+        if door_id not in self.door_relays:
+            self.logger.error(f"Puerta {door_id} no encontrada")
+            return False
+        
+        try:
+            rele = self.door_relays[door_id]
+            rele.off()  # Desactivar relé
+            self.logger.info(f"Relé desactivado para puerta {door_id}")
+            
+            # Actualizar estado
+            self.door_states[door_id]['is_open'] = False
+            self.door_states[door_id]['relay_active'] = False
+            self.door_states[door_id]['last_closed'] = time.time()
+            
+            # Actualizar configuración
+            self.config['doors'][door_id]['door_open'] = False
+            self._save_config()
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error cerrando puerta {door_id}: {e}")
+            return False
     
     def _activate_relay_matrix(self, gpio_pin: int, relay_index: int, door_id: str) -> bool:
         """

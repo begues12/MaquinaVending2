@@ -558,6 +558,42 @@ def open_door_hardware(door_id):
             'success': False,
             'error': str(e)
         }), 500
+        
+#Close dor
+@app.route('/api/hardware/door/<door_id>/close', methods=['POST'])
+def close_door_hardware(door_id):
+    """Cerrar puerta usando el sistema de hardware (relé)"""
+    try:
+        # Verificar modo restock
+        restock_status = restock_controller.get_restock_status()
+        if not restock_status['active']:
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado - modo restock requerido'
+            }), 403
+        
+        # Cerrar puerta
+        success = hardware_controller.close_door(door_id)
+        
+        if success:
+            logger.info(f"Puerta {door_id} cerrada via hardware")
+            return jsonify({
+                'success': True,
+                'message': f'Puerta {door_id} cerrada',
+                'door_id': door_id
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Error al cerrar puerta {door_id}'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error cerrando puerta {door_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/hardware/door/<door_id>/state', methods=['GET'])
 def get_door_hardware_state(door_id):

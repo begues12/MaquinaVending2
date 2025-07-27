@@ -965,6 +965,22 @@ class VendingMachineSimple {
                 console.log('Countdown terminado, limpiando...');
                 clearInterval(this.doorCountdownInterval);
                 this.doorCountdownInterval = null;
+                // Llamada para cerrar la puerta en el backend
+                if (this.selectedDoor) {
+                    fetch(`/api/door/close/${this.selectedDoor}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Puerta cerrada:', data);
+                    })
+                    .catch(error => {
+                        console.error('Error al cerrar la puerta:', error);
+                    });
+                }
                 this.hideDoorOpenScreensaver();
                 
                 // Mostrar salvapantallas de agradecimiento breve
