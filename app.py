@@ -515,13 +515,6 @@ def export_to_usb():
 def open_door_hardware(door_id):
     """Abrir puerta usando el sistema de hardware (relé)"""
     try:
-        # Verificar modo restock
-        restock_status = restock_controller.get_restock_status()
-        if not restock_status['active']:
-            return jsonify({
-                'success': False,
-                'error': 'Acceso denegado - modo restock requerido'
-            }), 403
         
         # Abrir puerta
         success = hardware_controller.open_door(door_id)
