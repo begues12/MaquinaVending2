@@ -8,6 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 from typing import Dict, Optional, Callable
 import json
+from gpiozero import OutputDevice, Button
 import os
 
 # Intentar importar RPi.GPIO, si no está disponible (desarrollo), usar mock
@@ -335,17 +336,22 @@ class HardwareController:
             return False
     
     def _activate_relay_simple(self, gpio_pin: int, door_id: str) -> bool:
-        """Activar un relé simple (un pin, un relé)"""
+        """Activar un relé simple (un pin, un relé) usando gpiozero OutputDevice"""
         try:
             if GPIO_AVAILABLE:
-                # Verificar si el pin está configurado como OUTPUT
                 try:
-                    GPIO.output(gpio_pin, GPIO.HIGH)
+                    from gpiozero import OutputDevice
+                except ImportError:
+                    self.logger.error("gpiozero no está disponible en el entorno actual.")
+                    return False
+                # Activar el relé usando OutputDevice
+                try:
+                    # Se puede guardar la instancia si se requiere desactivar luego
+                    rele = OutputDevice(gpio_pin, active_high=True, initial_value=True)
+                    self.logger.info(f"Relé simple puerta {door_id} activado con gpiozero OutputDevice en pin {gpio_pin}")
                 except Exception as e:
-                    # Si falla, intentar configurar el pin como OUTPUT y reintentar
-                    self.logger.warning(f"Pin {gpio_pin} no estaba configurado como OUTPUT. Configurando...")
-                    GPIO.setup(gpio_pin, GPIO.OUT)
-                    GPIO.output(gpio_pin, GPIO.HIGH)
+                    self.logger.error(f"Error activando OutputDevice en pin {gpio_pin}: {str(e)}")
+                    return False
             else:
                 print(f"SIMULACIÓN: Activando relé simple puerta {door_id} en pin {gpio_pin}")
             return True
