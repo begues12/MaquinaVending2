@@ -767,8 +767,6 @@ class VendingMachineSimple {
         const modal = new bootstrap.Modal(document.getElementById('contactlessModal'));
         modal.show();
 
-        // Llamar a purchase para inicializar el estado
-        // /api/purchase
         const purchaseData = {
             door_id: this.selectedDoor,
         };
@@ -786,7 +784,7 @@ class VendingMachineSimple {
                 // Polling para esperar a que el usuario acerque la tarjeta y el backend confirme el pago
                 let paymentConfirmed = false;
                 let paymentError = null;
-                for (let i = 0; i < 20; i++) { // Espera hasta 20s máximo
+                for (let i = 0; i < 30; i++) { // Espera hasta 10s máximo
                     const paymentResponse = await fetch('/api/process_payment', {
                         method: 'POST',
                         headers: {

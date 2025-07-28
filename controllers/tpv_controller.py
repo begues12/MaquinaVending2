@@ -152,6 +152,26 @@ class TPVController:
                 'amount': amount_cents / 100,
                 'transaction_id': None
             }
+            
+    def init_payment(self, amount: float) -> Dict[str, Any]:
+        """
+        Iniciar un pago contactless
+        
+        Args:
+            amount: Monto a cobrar en euros
+            
+        Returns:
+            Dict con resultado del pago
+        """
+        if not self.tpv_enabled:
+            return {
+                'success': False,
+                'error': 'TPV no habilitado',
+                'amount': amount,
+                'transaction_id': None
+            }
+        
+        return re
     
     def _parse_tpv_response(self, response: str, amount: float) -> Dict[str, Any]:
         """

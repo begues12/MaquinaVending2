@@ -63,7 +63,7 @@ def get_door(door_id):
 
 # Ruta principal de compra
 @app.route('/api/purchase', methods=['POST'])
-def process_purchase():
+def process_contactless():
     """Peticion para procesar una compra"""
     #De momento devuelve siempre true
     try:
@@ -78,47 +78,49 @@ def process_purchase():
         if not product:
             return jsonify({'success': False, 'error': 'Producto no encontrado'}), 404
 
-        # Simular generación de payment_id
-        payment_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
-
-        # Simular espera de 5-10 segundos para acercar la tarjeta
-        simulated_wait = random.randint(5, 10)
-        logger.info(f"Esperando {simulated_wait}s para simular acercar tarjeta en compra {payment_id}")
-        time.sleep(simulated_wait)
-
-        # Guardar estado de pago pendiente (en memoria, para demo)
-        # En producción, usar base de datos o cache
-        if not hasattr(app, 'pending_payments'):
-            app.pending_payments = {}
-        app.pending_payments[payment_id] = {
-            'door_id': door_id,
-            'product': product,
-            'status': 'pending',
-            'amount': product['price']
-        }
-
-        return jsonify({
-            'success': True,
-            'message': f'Compra viable para {product["name"]}',
-            'product': product,
-            'payment_id': payment_id
-        })
+        # Abre solicitud con el tpv
+        amount = product['price']
+        transaction_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        payment_id = payment_processor.create_payment(amount, transaction_id, 'contactless', door_id)
+        if not payment_id:
+            return jsonify({'success': False, 'error': 'Error al procesar el pago'}), 500
+        # Simula el pago exitoso
+        
+        # Y espera respuesa de tarjeta acercada al tpv de momento simulado
+        random_response = random.choice(['APPROVED', 'DECLINED'])
+        response = tpv_controller.process_payment(amount, transaction_id, random_response)
+        if response['success']:
+            status = response['status']
+            result = response['result']
+            
+            if status == 'OK':
+                # Procesar resultado exitoso
+                logger.info(f"Pago aprobado para {product['name']} en puerta {door_id}")
+            else:
+                logger.warning(f"Pago rechazado para {product['name']} en puerta {door_id}")
+    
     except Exception as e:
         logger.error(f"Error al procesar compra: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/process_payment', methods=['POST'])
 def process_payment():
+    # Revisa peticion de pago en el tpv
     data = request.get_json()
-    if not data or 'amount' not in data:
+    if not data or 'payment_id' not in data:
         return jsonify({'success': False, 'error': 'Datos de pago inválidos'}), 400
-
+    
     try:
-        # result = payment_processor.process_payment(data['amount'])
-        return jsonify({'success': True, 'result': result})
-    except Exception as e:
-        logger.error(f"Error al procesar pago: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        # Simular 5-10 segundos de espera mientras devuelve el estado del pago
+        payment_id = data['payment_id']
+        if not hasattr(app, 'pending_payments') or payment_id not in app.pending_payments:
+            return jsonify({'success': False, 'error': 'Pago no encontrado'}), 404
+        payment_info = app.pending_payments[payment_id]
+        logger.info(f"Procesando pago {payment_id} para puerta {payment_info['door_id']}")
+        time.sleep(random.randint(5, 10))  # Simular tiempo de procesamiento
+        # Simular respuesta del TPV
+        response = tpv_controller.process_payment(payment_info['amount'])
+        
 
 # Rutas para modo reposición
 @app.route('/api/restock/click', methods=['POST'])
