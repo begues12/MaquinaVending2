@@ -26,9 +26,9 @@
       "empty_space_text": "Próximamente"
     },
     "restock_mode": {
-      "enabled": false,
+      "enabled": true,
       "gpio_pin": 16,
-      "activated_at": null,
+      "activated_at": "2025-07-28T17:09:03.285411",
       "secret_sequence": {
         "enabled": true,
         "sequence": [

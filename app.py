@@ -1,10 +1,10 @@
 """
 Aplicación Flask principal para la máquina expendedora
 Aplicación modular con blueprints organizados por funcionalidad
+Optimizada para Raspberry Pi con Flask puro
 """
 import logging
 import time
-import webview
 import random
 import string
 from flask import Flask, render_template, request, jsonify
@@ -109,25 +109,31 @@ def process_contactless():
 
 # Función para iniciar la aplicación
 def start_app():
-    """Iniciar la aplicación con PyWebView"""
+    """Iniciar la aplicación Flask para Raspberry Pi"""
     try:
-        # Configurar PyWebView
-        webview.create_window(
-            'Floradomicilio.com',
-            app,
-            width=Config.WINDOW_WIDTH,
-            height=Config.WINDOW_HEIGHT,
-            resizable=True,
-            fullscreen=False,
-            easy_drag=False,
-            frameless=False
-        )
+        logger.info("Iniciando Máquina Expendedora v2.0")
+        logger.info(f"Plataforma: raspberry")
+        logger.info(f"GPIO habilitado: {Config.GPIO_ENABLED}")
         
-        logger.info("Iniciando aplicación modular...")
-        webview.start(debug=Config.FLASK_ENV == 'development')
+        # Inicializar base de datos
+        db_manager.init_db()
+        
+        # Cargar configuración de máquina
+        config_manager.load_config()
+        
+        logger.info("Iniciando servidor Flask (Raspberry Pi)")
+        
+        # Iniciar servidor Flask
+        app.run(
+            host='0.0.0.0',  # Escuchar en todas las interfaces para Raspberry Pi
+            port=5000,
+            debug=Config.FLASK_ENV == 'development',
+            threaded=True
+        )
         
     except Exception as e:
         logger.error(f"Error al iniciar la aplicación: {e}")
+        raise
     finally:
         logger.info("Aplicación cerrada")
 
