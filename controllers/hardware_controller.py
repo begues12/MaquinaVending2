@@ -143,6 +143,13 @@ class HardwareController:
                         self.logger.info(f"OutputDevice creado y apagado para puerta {door_id} en pin {gpio_pin}")
                     except Exception as e:
                         self.logger.error(f"Error creando OutputDevice para puerta {door_id} en pin {gpio_pin}: {e}")
+                        # Crear relé simulado como fallback
+                        try:
+                            simulated_relay = self._create_simulated_relay(door_id, gpio_pin)
+                            self.door_relays[door_id] = simulated_relay
+                            self.logger.info(f"Relé simulado creado para puerta {door_id} en pin {gpio_pin}")
+                        except Exception as fallback_error:
+                            self.logger.error(f"Error creando relé simulado para puerta {door_id}: {fallback_error}")
                 else:
                     self.logger.warning(f"Puerta {door_id} no tiene gpio_pin configurado, no se crea OutputDevice")
          
@@ -279,6 +286,28 @@ class HardwareController:
         except Exception as e:
             self.logger.error(f"Error configurando tiempo de apertura para {door_id}: {e}")
             return False
+
+    def _create_simulated_relay(self, door_id: str, gpio_pin: int):
+        """Crear un relé simulado para testing en Windows/desarrollo"""
+        class SimulatedRelay:
+            def __init__(self, door_id, gpio_pin):
+                self.door_id = door_id
+                self.gpio_pin = gpio_pin
+                self.is_on = False
+                
+            def on(self):
+                self.is_on = True
+                print(f"SIMULACIÓN RELÉ: Puerta {self.door_id} (pin {self.gpio_pin}) -> ACTIVADO")
+                
+            def off(self):
+                self.is_on = False
+                print(f"SIMULACIÓN RELÉ: Puerta {self.door_id} (pin {self.gpio_pin}) -> DESACTIVADO")
+                
+            @property
+            def value(self):
+                return 1 if self.is_on else 0
+        
+        return SimulatedRelay(door_id, gpio_pin)
 
 
     def open_door(self, door_id: str) -> bool:

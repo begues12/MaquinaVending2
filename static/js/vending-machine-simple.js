@@ -974,6 +974,15 @@ class VendingMachineSimple {
     showSuccessResult(result) {
         console.log('Iniciando showSuccessResult con resultado:', result);
         
+        // Guardar el ID de la puerta ANTES de cerrar modales para evitar que se pierda
+        const doorId = this.selectedDoor;
+        console.log('ID de puerta guardado:', doorId);
+        
+        if (!doorId) {
+            console.error('Error: No hay puerta seleccionada para abrir');
+            return;
+        }
+        
         // Ocultar overlay de bloqueo TPV primero
         this.hideTPVBlockOverlay();
         
@@ -988,7 +997,7 @@ class VendingMachineSimple {
         });
         
         setTimeout(() => {
-            const doorData = this.doorsData[this.selectedDoor];
+            const doorData = this.doorsData[doorId];
             let doorOpenTime = 30;
             
             if (doorData && doorData.open_time) {
@@ -998,7 +1007,7 @@ class VendingMachineSimple {
             console.log('Datos de puerta:', doorData);
             console.log('Tiempo de apertura configurado:', doorOpenTime, 'segundos');
             
-            this.showDoorOpenScreensaver(this.selectedDoor, doorOpenTime);
+            this.showDoorOpenScreensaver(doorId, doorOpenTime);
         }, 300);
     }
 

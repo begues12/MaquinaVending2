@@ -307,3 +307,33 @@ def set_multiple_door_open_times():
             'success': False,
             'error': str(e)
         }), 500
+
+@hardware_bp.route('/api/hardware/debug', methods=['GET'])
+def debug_hardware():
+    """Endpoint temporal para debuggear el estado de los relés"""
+    try:
+        # Obtener estado de los relés
+        door_relays = hardware_controller.door_relays
+        
+        relays_info = {}
+        for door_id, relay in door_relays.items():
+            relays_info[door_id] = {
+                'type': type(relay).__name__,
+                'has_relay': relay is not None,
+                'methods': [method for method in dir(relay) if not method.startswith('_')],
+                'gpio_pin': getattr(relay, 'gpio_pin', 'unknown')
+            }
+        
+        return jsonify({
+            'success': True,
+            'total_relays': len(door_relays),
+            'initialized': hardware_controller.initialized,
+            'relays': relays_info
+        })
+        
+    except Exception as e:
+        logger.error(f"Error en debug de hardware: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
