@@ -1588,6 +1588,16 @@ class VendingMachineSimple {
         // Verificar cada 2 segundos si hay una solicitud de redirección
         setInterval(async () => {
             try {
+                // Verificar botón físico primero
+                const buttonResponse = await fetch('/api/restock/button/check');
+                if (buttonResponse.ok) {
+                    const buttonData = await buttonResponse.json();
+                    if (buttonData.button_pressed) {
+                        console.log('Botón físico presionado:', buttonData);
+                    }
+                }
+
+                // Verificar estado de redirección
                 const response = await fetch('/api/restock/redirect-status');
                 if (response.ok) {
                     const data = await response.json();

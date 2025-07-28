@@ -693,7 +693,10 @@ class HardwareController:
             self.logger.info("Limpieza de todos los recursos de hardware completada")
         except Exception as e:
             self.logger.error(f"Error en limpieza: {e}")
-            self.logger.error(f"Error en limpieza: {e}")
+    
+    def cleanup_gpio(self):
+        """Alias para cleanup() - para compatibilidad con restock_controller"""
+        self.cleanup()
     
     def __del__(self):
         """Destructor - limpiar recursos"""

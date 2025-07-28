@@ -66,6 +66,28 @@ class RestockController:
     
     # El setup de GPIO y la gestión de eventos se delega a hardware_controller
     
+    def check_physical_button(self) -> bool:
+        """Verificar si el botón físico está presionado usando hardware_controller"""
+        try:
+            return hardware_controller.is_restock_button_pressed()
+        except Exception as e:
+            logger.error(f"Error verificando botón físico: {e}")
+            return False
+    
+    def handle_button_press(self) -> bool:
+        """Manejar presión del botón (físico o simulado)"""
+        try:
+            # Si el botón físico está presionado, activar redirección
+            if self.check_physical_button():
+                logger.info(f"Botón físico presionado en pin {self.restock_pin}")
+                self.redirect_requested = True
+                self.redirect_timestamp = time.time()
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error manejando presión de botón: {e}")
+            return False
+    
     # El callback del botón físico debe ser registrado en hardware_controller si se requiere
     
     def toggle_restock_mode(self) -> bool:

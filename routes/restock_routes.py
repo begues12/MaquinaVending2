@@ -83,6 +83,30 @@ def simulate_restock_button():
         'message': 'Botón de reposición simulado'
     })
 
+@restock_bp.route('/api/restock/button/check', methods=['GET'])
+def check_physical_button():
+    """Verificar estado del botón físico de restock (pin 16)"""
+    try:
+        button_pressed = restock_controller.check_physical_button()
+        button_handled = False
+        
+        # Si el botón está presionado, manejar la presión
+        if button_pressed:
+            button_handled = restock_controller.handle_button_press()
+        
+        return jsonify({
+            'success': True,
+            'button_pressed': button_pressed,
+            'button_handled': button_handled,
+            'redirect_requested': restock_controller.is_redirect_requested()['redirect_requested']
+        })
+    except Exception as e:
+        logger.error(f"Error verificando botón físico de restock: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @restock_bp.route('/api/restock/redirect-status', methods=['GET'])
 def get_restock_redirect_status():
     """Verificar si se ha solicitado redirección al panel de restock"""
