@@ -1,0 +1,92 @@
+{
+  "mcu": {
+    "enabled": false,
+    "connection": {
+      "port": "/dev/ttyUSB0",
+      "baudrate": 115200,
+      "timeout": 5,
+      "retry_attempts": 3,
+      "auto_reconnect": true,
+      "ping_interval": 5
+    },
+    "payment_processing": {
+      "timeout": 300,
+      "supported_methods": ["contactless", "card", "cash", "mobile"],
+      "default_currency": "EUR",
+      "retry_failed_payments": true,
+      "max_retry_attempts": 3
+    },
+    "hardware_control": {
+      "door_timeout": 30.0,
+      "sensor_poll_rate": 0.1,
+      "led_control": true,
+      "buzzer_enabled": true,
+      "display_enabled": false
+    },
+    "security": {
+      "encrypted_communication": false,
+      "checksum_validation": true,
+      "command_authentication": false,
+      "max_failed_commands": 10
+    },
+    "monitoring": {
+      "health_check_interval": 30,
+      "log_all_commands": true,
+      "log_responses": true,
+      "performance_metrics": true
+    },
+    "simulation": {
+      "enabled": true,
+      "simulate_delays": true,
+      "random_failures": false,
+      "failure_rate": 0.05
+    }
+  },
+  "payment_methods": {
+    "contactless": {
+      "enabled": true,
+      "timeout": 30,
+      "max_amount": 50.0,
+      "supported_cards": ["visa", "mastercard", "amex"]
+    },
+    "card": {
+      "enabled": true,
+      "timeout": 45,
+      "max_amount": 999.99,
+      "require_pin": true
+    },
+    "cash": {
+      "enabled": false,
+      "timeout": 60,
+      "change_available": true,
+      "accepted_denominations": [0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
+    },
+    "mobile": {
+      "enabled": false,
+      "timeout": 30,
+      "qr_code_display": true,
+      "supported_apps": ["apple_pay", "google_pay", "samsung_pay"]
+    }
+  },
+  "error_codes": {
+    "MCU_001": "Conexión perdida",
+    "MCU_002": "Timeout de comando",
+    "MCU_003": "Respuesta inválida",
+    "MCU_004": "Error de checksum",
+    "PAY_001": "Pago rechazado",
+    "PAY_002": "Tarjeta no válida",
+    "PAY_003": "Fondos insuficientes",
+    "PAY_004": "Timeout de pago",
+    "DOOR_001": "Error abriendo puerta",
+    "DOOR_002": "Sensor de puerta fallido",
+    "DOOR_003": "Puerta atascada",
+    "SENS_001": "Sensor no responde",
+    "SENS_002": "Lectura fuera de rango"
+  },
+  "commands": {
+    "retries": 3,
+    "timeout": 5,
+    "queue_size": 100,
+    "priority_commands": ["PAYMENT_CANCEL", "DOOR_CLOSE", "RESET"]
+  }
+}
