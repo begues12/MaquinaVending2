@@ -173,6 +173,43 @@ def emergency_stop_hardware():
             'error': str(e)
         }), 500
 
+@hardware_bp.route('/api/hardware/restock-button/state', methods=['GET'])
+def get_restock_button_state():
+    """Obtener estado del botón de restock"""
+    try:
+        button_state = hardware_controller.get_restock_button_state()
+        
+        return jsonify({
+            'success': True,
+            'button_state': button_state
+        })
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo estado del botón de restock: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@hardware_bp.route('/api/hardware/restock-button/check', methods=['GET'])
+def check_restock_button_pressed():
+    """Verificar si el botón de restock está presionado"""
+    try:
+        is_pressed = hardware_controller.is_restock_button_pressed()
+        
+        return jsonify({
+            'success': True,
+            'is_pressed': is_pressed,
+            'timestamp': __import__('datetime').datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error verificando botón de restock: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 # Rutas para gestión de tiempos de apertura de puertas
 @hardware_bp.route('/api/door/<door_id>/open-time', methods=['GET'])
 def get_door_open_time(door_id):

@@ -88,6 +88,8 @@ class HardwareController:
         # Configuración de relés (valor por defecto, se puede sobrescribir por puerta)
         self.default_relay_duration = 3.0  # Segundos por defecto
         self.sensor_debounce = 200  # Milisegundos de rebote para sensores
+        # Botón de restock
+        self.restock_button = None
         # Estado de inicialización
         self.initialized = False
         # Inicializar GPIO y relés al crear la instancia
@@ -153,11 +155,79 @@ class HardwareController:
                 else:
                     self.logger.warning(f"Puerta {door_id} no tiene gpio_pin configurado, no se crea OutputDevice")
          
+            # Inicializar botón de restock si está configurado
+            self._initialize_restock_button()
+            
             self.initialized = True
             self.logger.info("GPIO inicializado correctamente y relés creados por puerta")
         except Exception as e:
             self.initialized = False
             self.logger.error(f"Error inicializando GPIO: {e}")
+    
+    def _initialize_restock_button(self):
+        """Inicializar botón de restock si está habilitado"""
+        try:
+            restock_config = self.config.get('machine', {}).get('restock_mode', {})
+            if restock_config.get('enabled', False):
+                gpio_pin = restock_config.get('gpio_pin')
+                if gpio_pin:
+                    self.logger.info(f"Inicializando botón de restock en pin {gpio_pin}")
+                    try:
+                        # Crear botón con pull-up interno (botón conectado a GND)
+                        self.restock_button = Button(gpio_pin, pull_up=True, bounce_time=0.1)
+                        self.logger.info(f"Botón de restock inicializado en pin {gpio_pin}")
+                    except Exception as e:
+                        self.logger.error(f"Error creando botón de restock en pin {gpio_pin}: {e}")
+                        self.restock_button = None
+                else:
+                    self.logger.warning("Restock habilitado pero sin gpio_pin configurado")
+            else:
+                self.logger.info("Modo restock deshabilitado")
+        except Exception as e:
+            self.logger.error(f"Error inicializando botón de restock: {e}")
+            self.restock_button = None
+    
+    def is_restock_button_pressed(self) -> bool:
+        """Verificar si el botón de restock está presionado"""
+        try:
+            if self.restock_button is not None:
+                # El botón devuelve True cuando está presionado (conectado a GND con pull-up)
+                is_pressed = self.restock_button.is_pressed
+                if is_pressed:
+                    self.logger.debug("Botón de restock presionado")
+                return is_pressed
+            else:
+                self.logger.debug("Botón de restock no inicializado")
+                return False
+        except Exception as e:
+            self.logger.error(f"Error leyendo estado del botón de restock: {e}")
+            return False
+    
+    def get_restock_button_state(self) -> dict:
+        """Obtener información completa del estado del botón de restock"""
+        try:
+            if self.restock_button is not None:
+                return {
+                    'initialized': True,
+                    'is_pressed': self.restock_button.is_pressed,
+                    'pin': self.config.get('machine', {}).get('restock_mode', {}).get('gpio_pin'),
+                    'enabled': self.config.get('machine', {}).get('restock_mode', {}).get('enabled', False)
+                }
+            else:
+                return {
+                    'initialized': False,
+                    'is_pressed': False,
+                    'pin': self.config.get('machine', {}).get('restock_mode', {}).get('gpio_pin'),
+                    'enabled': self.config.get('machine', {}).get('restock_mode', {}).get('enabled', False),
+                    'error': 'Botón no inicializado'
+                }
+        except Exception as e:
+            self.logger.error(f"Error obteniendo estado del botón de restock: {e}")
+            return {
+                'initialized': False,
+                'is_pressed': False,
+                'error': str(e)
+            }
     
     def get_pins_status(self) -> Dict[str, int]:
         """Obtener el estado actual de los pines GPIO"""
@@ -598,6 +668,15 @@ class HardwareController:
                 except Exception as e:
                     self.logger.warning(f"Error cerrando OutputDevice: {e}")
             self.door_relays.clear()
+
+            # Cerrar botón de restock si existe
+            if self.restock_button is not None:
+                try:
+                    self.logger.info("Cerrando botón de restock")
+                    self.restock_button.close()
+                    self.restock_button = None
+                except Exception as e:
+                    self.logger.warning(f"Error cerrando botón de restock: {e}")
 
             # Limpiar estados y callbacks
             self.door_states.clear()
