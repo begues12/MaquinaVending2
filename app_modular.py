@@ -11,6 +11,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from config import Config
 from database import db_manager
+from controllers.payment_system import payment_processor
 from machine_config import config_manager
 from controllers.restock_controller import restock_controller
 
@@ -61,7 +62,8 @@ def restock_panel():
 # Ruta principal de compra (legacy - mantener para compatibilidad)
 @app.route('/api/purchase', methods=['POST'])
 def process_contactless():
-    """Peticion para procesar una compra - Ruta legacy redirigida al nuevo sistema"""
+    """Peticion para procesar una compra"""
+    # De momento devuelve siempre true
     try:
         data = request.get_json()
         if not data or 'door_id' not in data:
@@ -73,38 +75,32 @@ def process_contactless():
         if not product:
             return jsonify({'success': False, 'error': 'Producto no encontrado'}), 404
 
-        if product['stock'] <= 0:
-            return jsonify({'success': False, 'error': 'Producto sin stock'}), 400
-
-        # Redirigir al nuevo sistema de pagos modular
-        logger.info(f"Ruta legacy /api/purchase redirigida a nuevo sistema para puerta {door_id}")
+        # Abre solicitud con el tpv
+        amount = product['price']
+        transaction_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        payment_id = payment_processor.create_payment(amount, transaction_id, 'contactless', door_id)
+        if not payment_id:
+            return jsonify({'success': False, 'error': 'Error al procesar el pago'}), 500
+        
+        # Simula el pago exitoso
+        # Y espera respuesta de tarjeta acercada al tpv de momento simulado
+        random_response = random.choice(['APPROVED', 'DECLINED'])
         
         # Usar importación local para evitar circular imports
         from routes.payment_routes import tpv_controller
-        amount = product['price']
-        
-        # Usar el nuevo flujo de dos pasos
-        response = tpv_controller.init_payment(amount, door_id)
+        response = tpv_controller.process_contactless_payment(amount)
         
         if response['success']:
-            return jsonify({
-                'success': True,
-                'status': 'payment_initiated',
-                'payment_id': response['payment_id'],
-                'amount': amount,
-                'door_id': door_id,
-                'message': 'Pago iniciado - usar /api/check_payment_status para seguimiento',
-                'legacy_redirect': True
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': response.get('error', 'Error iniciando pago'),
-                'legacy_redirect': True
-            })
+            status = response['status']
+            
+            if status == 'approved':
+                # Procesar resultado exitoso
+                logger.info(f"Pago aprobado para {product['name']} en puerta {door_id}")
+            else:
+                logger.warning(f"Pago rechazado para {product['name']} en puerta {door_id}")
     
     except Exception as e:
-        logger.error(f"Error al procesar compra legacy: {e}")
+        logger.error(f"Error al procesar compra: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Función para iniciar la aplicación

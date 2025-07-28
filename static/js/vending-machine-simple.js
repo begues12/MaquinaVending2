@@ -852,14 +852,10 @@ class VendingMachineSimple {
 
             // 1. Solicitud de pago
             let paymentData = {
-                door_id: this.selectedDoor,
-                payment_method: 'contactless',
-                payment_data: {
-                    amount: doorData.product.price
-                }
+                door_id: this.selectedDoor
             };
 
-            const purchaseResponse = await fetch('/api/purchase', {
+            const purchaseResponse = await fetch('/api/process_payment', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -869,7 +865,13 @@ class VendingMachineSimple {
             const purchaseResult = await purchaseResponse.json();
 
             // Cerrar modal de contactless
-            bootstrap.Modal.getInstance(document.getElementById('contactlessModal')).hide();
+            const contactlessModalElement = document.getElementById('contactlessModal');
+            if (contactlessModalElement) {
+                const contactlessModal = bootstrap.Modal.getInstance(contactlessModalElement);
+                if (contactlessModal) {
+                    contactlessModal.hide();
+                }
+            }
 
             // Mostrar modal de dispensando
             this.showDispensingModal();
@@ -877,43 +879,50 @@ class VendingMachineSimple {
             // 2. Esperar confirmación de pago
             if (purchaseResult.success && purchaseResult.payment_id) {
                 // Esperar a que el backend procese el pago
-                let paymentConfirmed = false;
+                let paymentCompleted = false;
                 let paymentError = null;
+                let finalResult = null;
+                
                 for (let i = 0; i < 20; i++) { // Espera hasta 20s máximo
                     const paymentResponse = await fetch('/api/process_payment', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({ payment_id: purchaseResult.payment_id })
+                        body: JSON.stringify({ 
+                            payment_id: purchaseResult.payment_id,
+                            door_id: this.selectedDoor 
+                        })
                     });
                     const paymentResult = await paymentResponse.json();
-                    if (paymentResult.success) {
-                        paymentConfirmed = true;
+                    
+                    if (paymentResult.success && paymentResult.status === 'approved') {
+                        // Pago completado y producto dispensado
+                        paymentCompleted = true;
+                        finalResult = paymentResult;
                         break;
+                    } else if (paymentResult.status === 'declined' || paymentResult.status === 'timeout') {
+                        // Pago rechazado o timeout
+                        paymentError = paymentResult.error || `Pago ${paymentResult.status}`;
+                        break;
+                    } else if (paymentResult.status === 'pending') {
+                        // Continuar esperando
+                        await new Promise(res => setTimeout(res, 1000));
+                        continue;
                     } else if (paymentResult.error) {
+                        // Error en el procesamiento
                         paymentError = paymentResult.error;
                         break;
                     }
+                    
                     await new Promise(res => setTimeout(res, 1000));
                 }
 
-                if (paymentConfirmed) {
-                    // 3. Abrir puerta
-                    const openResponse = await fetch(`/api/hardware/door/${this.selectedDoor}/open`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    const openResult = await openResponse.json();
-                    if (openResult.success) {
-                        this.showSuccessResult(purchaseResult);
-                    } else {
-                        this.showErrorResult(openResult.error || 'Error al abrir la puerta');
-                    }
+                if (paymentCompleted) {
+                    // El backend ya manejó todo (pago + dispensado + base de datos)
+                    this.showSuccessResult(finalResult);
                 } else {
-                    this.showErrorResult(paymentError || 'Error al procesar el pago');
+                    this.showErrorResult(paymentError || 'Timeout esperando confirmación de pago');
                 }
             } else {
                 this.showErrorResult(purchaseResult.error || 'Error al iniciar el pago');
@@ -921,59 +930,100 @@ class VendingMachineSimple {
 
         } catch (error) {
             console.error('Error al procesar pago contactless:', error);
-            bootstrap.Modal.getInstance(document.getElementById('contactlessModal')).hide();
+            
+            // Cerrar modal de contactless de forma segura
+            const contactlessModalElement = document.getElementById('contactlessModal');
+            if (contactlessModalElement) {
+                const contactlessModal = bootstrap.Modal.getInstance(contactlessModalElement);
+                if (contactlessModal) {
+                    contactlessModal.hide();
+                }
+            }
+            
             // Ocultar overlay de bloqueo
             this.hideTPVBlockOverlay();
             this.showErrorResult('Error de comunicación con TPV. Intenta de nuevo.');
         } finally {
             // Resetear estado del modal
-            document.getElementById('contactless-processing').style.display = 'none';
-            document.getElementById('contactless-pay-btn').disabled = false;
+            const processingElement = document.getElementById('contactless-processing');
+            if (processingElement) {
+                processingElement.style.display = 'none';
+            }
+            
+            const payButton = document.getElementById('contactless-pay-btn');
+            if (payButton) {
+                payButton.disabled = false;
+            }
         }
     }
 
     showDispensingModal() {
-        const modal = new bootstrap.Modal(document.getElementById('dispensingModal'));
-        modal.show();
+        try {
+            const dispensingModalElement = document.getElementById('dispensingModal');
+            if (!dispensingModalElement) {
+                console.error('Modal dispensingModal no encontrado en el DOM');
+                return;
+            }
+            const modal = new bootstrap.Modal(dispensingModalElement);
+            modal.show();
+        } catch (error) {
+            console.error('Error al mostrar modal de dispensing:', error);
+        }
     }
 
     showSuccessResult(result) {
-        // Ocultar cualquier modal abierto
+        console.log('Iniciando showSuccessResult con resultado:', result);
+        
+        // Ocultar overlay de bloqueo TPV primero
+        this.hideTPVBlockOverlay();
+        
+        // Ocultar cualquier modal abierto (incluyendo dispensingModal)
         const openModals = document.querySelectorAll('.modal.show');
         openModals.forEach(modal => {
             const bsModal = bootstrap.Modal.getInstance(modal);
             if (bsModal) {
+                console.log('Cerrando modal:', modal.id);
                 bsModal.hide();
             }
         });
         
-        // Obtener tiempo de apertura de puerta desde la configuración
-        const doorData = this.doorsData[this.selectedDoor];
-        let doorOpenTime = 10; // Tiempo por defecto en segundos
-        
-        if (doorData && doorData.open_time) {
-            doorOpenTime = Math.round(doorData.open_time);
-        }
-        
-        console.log('Datos de puerta:', doorData);
-        console.log('Tiempo de apertura configurado:', doorOpenTime, 'segundos');
-        
-        // Mostrar salvapantallas de puerta abierta
-        this.showDoorOpenScreensaver(this.selectedDoor, doorOpenTime);
+        setTimeout(() => {
+            const doorData = this.doorsData[this.selectedDoor];
+            let doorOpenTime = 30;
+            
+            if (doorData && doorData.open_time) {
+                doorOpenTime = Math.round(doorData.open_time);
+            }
+            
+            console.log('Datos de puerta:', doorData);
+            console.log('Tiempo de apertura configurado:', doorOpenTime, 'segundos');
+            
+            this.showDoorOpenScreensaver(this.selectedDoor, doorOpenTime);
+        }, 300);
     }
 
-    // Mostrar salvapantallas de puerta abierta con countdown
     showDoorOpenScreensaver(doorId, openTimeSeconds) {
-        // Ocultar la aplicación principal
+        console.log(`Mostrando salvapantallas de puerta abierta para ${doorId} por ${openTimeSeconds} segundos`);
+        
         document.getElementById('main-app').style.display = 'none';
         
-        // Configurar y mostrar salvapantallas de puerta abierta
-        // Usar door-open-number que es el que existe en el HTML
-        document.getElementById('door-open-number').textContent = this.doorsData[doorId]?.display_name || doorId;
-        document.getElementById('door-timer-seconds').textContent = openTimeSeconds;
+        const doorOpenNumber    = document.getElementById('door-open-number');
+        const doorTimerSeconds = document.getElementById('door-timer-seconds');
+        
+        if (doorOpenNumber) {
+            doorOpenNumber.textContent = this.doorsData[doorId]?.display_name || doorId;
+        }
+        if (doorTimerSeconds) {
+            doorTimerSeconds.textContent = openTimeSeconds;
+        }
         
         const doorOpenScreen = document.getElementById('door-open-screensaver');
-        doorOpenScreen.style.display = 'flex';
+        if (doorOpenScreen) {
+            doorOpenScreen.style.display = 'flex';
+        } else {
+            console.error('No se encontró el elemento door-open-screensaver');
+            return;
+        }
         
         // Detener el timer del salvapantallas normal
         if (this.screensaverTimeout) {
@@ -981,15 +1031,30 @@ class VendingMachineSimple {
             this.screensaverTimeout = null;
         }
         
+        // Enviar comando para abrir la puerta al backend
+        console.log(`Enviando comando para abrir puerta ${doorId}`);
+        fetch(`/api/hardware/door/${doorId}/open`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (!response.ok) {
+                console.error('Error al abrir la puerta:', response.statusText);
+            } else {
+                console.log('Comando de apertura de puerta enviado correctamente');
+            }
+        }).catch(error => {
+            console.error('Error de red al abrir la puerta:', error);
+        });
+        
         // Iniciar countdown
         this.startDoorCountdown(doorId, openTimeSeconds);
-        
-        console.log(`Mostrando salvapantallas de puerta abierta para ${doorId} por ${openTimeSeconds} segundos`);
     }
 
     // Iniciar countdown de puerta abierta
     startDoorCountdown(doorId, totalSeconds) {
-        console.log('Iniciando countdown con', totalSeconds, 'segundos');
+        console.log(`Iniciando countdown con ${totalSeconds} segundos para puerta ${doorId}`);
         
         // Limpiar countdown previo si existe
         if (this.doorCountdownInterval) {
@@ -1019,7 +1084,7 @@ class VendingMachineSimple {
         // La puerta ya se ha abierto tras el pago OK, aquí solo gestionamos el cierre
         this.doorCountdownInterval = setInterval(() => {
             remainingSeconds--;
-            console.log('Countdown:', remainingSeconds);
+            console.log(`Countdown puerta ${doorId}:`, remainingSeconds);
             
             // Actualizar timer
             timerElement.textContent = remainingSeconds;
@@ -1039,9 +1104,10 @@ class VendingMachineSimple {
             
             // Cuando llega a 0, ocultar salvapantallas y mostrar agradecimiento
             if (remainingSeconds <= 0) {
-                console.log('Countdown terminado, limpiando...');
+                console.log(`Countdown terminado para puerta ${doorId}, enviando comando de cierre...`);
                 clearInterval(this.doorCountdownInterval);
                 this.doorCountdownInterval = null;
+                
                 // Llamada para cerrar la puerta en el backend
                 fetch(`/api/hardware/door/${doorId}/close`, {
                     method: 'POST',
@@ -1052,7 +1118,7 @@ class VendingMachineSimple {
                     if (!response.ok) {
                         console.error('Error al cerrar la puerta:', response.statusText);
                     } else {
-                        console.log('Puerta cerrada correctamente');
+                        console.log(`Puerta ${doorId} cerrada correctamente`);
                     }
                 }).catch(error => {
                     console.error('Error de red al cerrar la puerta:', error);
@@ -1120,27 +1186,51 @@ class VendingMachineSimple {
     }
 
     showErrorResult(error) {
-        const modal = new bootstrap.Modal(document.getElementById('statusModal'));
-        
-        document.getElementById('status-title').textContent = 'Error en la Compra';
-        document.getElementById('status-icon').innerHTML = '<i class="bi bi-x-circle-fill text-danger" style="font-size: 3rem;"></i>';
-        document.getElementById('status-message').innerHTML = `
-            <h5>No se pudo completar la compra</h5>
-            <p>${error}</p>
-            <div class="mt-3">
-                <small class="text-muted">Intenta de nuevo o selecciona otra puerta</small><br>
-                <small class="text-info">Regresando a la pantalla principal en 3 segundos...</small>
-            </div>
-        `;
-        
-        modal.show();
-        
-        // Auto-cerrar después de 3 segundos y regresar a página principal
-        setTimeout(() => {
-            modal.hide();
-            this.clearSelection();
-            this.returnToMainScreen();
-        }, 3000);
+        try {
+            const statusModalElement = document.getElementById('statusModal');
+            if (!statusModalElement) {
+                console.error('Modal statusModal no encontrado en el DOM');
+                return;
+            }
+
+            const modal = new bootstrap.Modal(statusModalElement);
+            
+            // Verificar y actualizar elementos del modal
+            const titleElement = document.getElementById('status-title');
+            if (titleElement) {
+                titleElement.textContent = 'Error en la Compra';
+            }
+
+            const iconElement = document.getElementById('status-icon');
+            if (iconElement) {
+                iconElement.innerHTML = '<i class="bi bi-x-circle-fill text-danger" style="font-size: 3rem;"></i>';
+            }
+
+            const messageElement = document.getElementById('status-message');
+            if (messageElement) {
+                messageElement.innerHTML = `
+                    <h5>No se pudo completar la compra</h5>
+                    <p>${error}</p>
+                    <div class="mt-3">
+                        <small class="text-muted">Intenta de nuevo o selecciona otra puerta</small><br>
+                        <small class="text-info">Regresando a la pantalla principal en 3 segundos...</small>
+                    </div>
+                `;
+            } else {
+                console.error('Elemento status-message no encontrado');
+            }
+            
+            modal.show();
+            
+            // Auto-cerrar después de 3 segundos y regresar a página principal
+            setTimeout(() => {
+                modal.hide();
+                this.clearSelection();
+                this.returnToMainScreen();
+            }, 3000);
+        } catch (error) {
+            console.error('Error al mostrar modal de error:', error);
+        }
     }
 
     updateDoorAfterPurchase(doorId, result) {

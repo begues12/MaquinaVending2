@@ -25,6 +25,8 @@ class Config:
     # Configuración del sistema
     PLATFORM = 'raspberry' # os.environ.get('PLATFORM', 'raspberry')
     GPIO_ENABLED = os.environ.get('GPIO_ENABLED', 'False').lower() == 'true'
+    SIMULATE_PAYMENTS = True  # Cambiar a False para usar TPV real
+    TPV_ENABLED = os.environ.get('TPV_ENABLED', 'True').lower() == 'true'
     
     # Configuración del servidor
     HOST = os.environ.get('HOST', '127.0.0.1')
